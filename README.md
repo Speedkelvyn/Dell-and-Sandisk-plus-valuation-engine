@@ -22,6 +22,8 @@ streamlit run app.py
 
 Pick Try the examples on the Watchlist tab to see everything without internet. Live data comes from Yahoo Finance through `yfinance` and is saved once a day in `my_data/cache`, so a second run is instant. Lists and holdings are saved in `my_data/` on your computer and excluded from git. A ticker whose data leaves a gap the model needs is listed as Needs inputs with the missing figures named; the engine never fills a gap with zero.
 
+To put the app on the web (for example on Streamlit Community Cloud: repository `Speedkelvyn/Dell-and-Sandisk-plus-valuation-engine`, branch `main`, main file `app.py`), nothing else is needed: a shared copy detects itself, keeps no watchlist or holdings on the server, and shows the examples even if Yahoo Finance refuses the server's requests. Run it on your own computer for live data and saved lists.
+
 The same functions are available without the app: `from service import value_ticker, value_many` (in `engine/`).
 
 ## Worked examples: Dell and Sandisk

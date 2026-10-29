@@ -85,7 +85,10 @@ with st.sidebar:
         value=False,
         help="Today's data is saved the first time you value a ticker. Tick this to download it again.",
     )
-    st.caption(f"Your lists are saved in `{S.DATA_DIR}` on this computer.")
+    if S.HOSTED:
+        st.caption("Shared web copy: your lists are not saved. They last until you close this tab.")
+    else:
+        st.caption(f"Your lists are saved in `{S.DATA_DIR}` on this computer.")
     st.caption("For illustration only, not investment advice.")
 
 st.title("Stock valuation engine")
@@ -612,7 +615,9 @@ with tab_watch:
 # ---------------------------------------------------------------- portfolio
 with tab_port:
     st.markdown("Enter what you own. The model values each stock and totals it for the whole portfolio. "
-                "Your holdings stay on this computer (`my_data/holdings.csv`, excluded from git).")  # fmt: skip
+                + ("This shared web copy does not save holdings; they last until you close the tab."
+                   if S.HOSTED else
+                   "Your holdings stay on this computer (`my_data/holdings.csv`, excluded from git)."))  # fmt: skip
     held = ss("holdings_df", S.load_holdings())
     edited = st.data_editor(
         held, num_rows="dynamic", hide_index=True, width="stretch", key="holdings_editor",

@@ -308,3 +308,14 @@ def test_reading_states_the_numbers_the_model_produced(dell, sndk):
     s = " ".join(service.reading(sndk))
     assert "inside the DCF range" in s and "Earnings quality grade C" in s
     assert service.reading(service.Valuation(ticker="X", scenario="Base", error="boom")) == []
+
+
+def test_hosted_copy_keeps_no_lists_on_the_server(tmp_path, monkeypatch):
+    """A shared web copy must not store one visitor's watchlist or holdings for the next visitor."""
+    monkeypatch.setattr(service, "HOSTED", True)
+    monkeypatch.setattr(service, "DATA_DIR", tmp_path)
+    service.save_watchlist(["AAPL"])
+    service.save_holdings(pd.DataFrame({"Ticker": ["AAPL"], "Shares": [5]}))
+    assert list(tmp_path.iterdir()) == []
+    assert service.load_watchlist() == []
+    assert service.load_holdings().empty

@@ -45,7 +45,13 @@ import run_valuation  # noqa: E402
 import valuation_v2 as v  # noqa: E402
 
 ROOT = HERE.parent
-DATA_DIR = pathlib.Path(os.environ.get("VALUATION_DATA_DIR") or ROOT / "my_data")
+# A shared web copy (Streamlit Community Cloud runs from /mount/src) must not keep one visitor's lists where the
+# next visitor could open them: there, lists live only in the browser session and only Yahoo's public data is cached.
+HOSTED = os.environ.get("VALUATION_HOSTED") == "1" or ROOT.as_posix().startswith("/mount/src")
+DATA_DIR = pathlib.Path(
+    os.environ.get("VALUATION_DATA_DIR")
+    or (pathlib.Path(tempfile.gettempdir()) / "valuation_cache" if HOSTED else ROOT / "my_data")
+)
 SCENARIOS = ("Bear", "Base", "Bull")
 PUBLISHED = {"DELL": "dell", "SNDK": "sndk"}
 TICKER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.\-]{0,9}$")  # class shares use a dash (BRK-B)
@@ -762,6 +768,8 @@ def _data_dir(data_dir: pathlib.Path | None) -> pathlib.Path:
 
 
 def load_watchlist(data_dir: pathlib.Path | None = None) -> list[str]:
+    if HOSTED and data_dir is None:
+        return []
     p = _data_dir(data_dir) / "watchlist.json"
     try:
         return parse_tickers(" ".join(json.loads(p.read_text(encoding="utf-8"))))[0]
@@ -770,6 +778,8 @@ def load_watchlist(data_dir: pathlib.Path | None = None) -> list[str]:
 
 
 def save_watchlist(tickers: list[str], data_dir: pathlib.Path | None = None) -> None:
+    if HOSTED and data_dir is None:
+        return
     p = _data_dir(data_dir) / "watchlist.json"
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(parse_tickers(" ".join(tickers))[0]), encoding="utf-8")
@@ -779,6 +789,8 @@ HOLDING_COLUMNS = ["Ticker", "Shares", "Cost per share"]
 
 
 def load_holdings(data_dir: pathlib.Path | None = None) -> pd.DataFrame:
+    if HOSTED and data_dir is None:
+        return pd.DataFrame(columns=HOLDING_COLUMNS)
     p = _data_dir(data_dir) / "holdings.csv"
     try:
         df = pd.read_csv(p)
@@ -788,6 +800,8 @@ def load_holdings(data_dir: pathlib.Path | None = None) -> pd.DataFrame:
 
 
 def save_holdings(df: pd.DataFrame, data_dir: pathlib.Path | None = None) -> None:
+    if HOSTED and data_dir is None:
+        return
     p = _data_dir(data_dir) / "holdings.csv"
     p.parent.mkdir(parents=True, exist_ok=True)
     clean_holdings(df).to_csv(p, index=False)
