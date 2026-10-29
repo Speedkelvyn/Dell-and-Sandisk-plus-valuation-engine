@@ -24,3 +24,6 @@ node_modules/
 
 # Written by value_ticker.py when run without --out
 /*/*_yahoo_*.json
+
+# Your own lists and the daily Yahoo cache, written by the app
+/my_data/

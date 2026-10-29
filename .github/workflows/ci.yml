@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: "20"
       - run: npm install --prefix "$RUNNER_TEMP/js" jstat@1.9.6
-      - run: pip install ruff pytest numpy pandas openpyxl scipy
+      - run: pip install ruff pytest -r requirements.txt
       - run: ruff check .
       - run: ruff format --check .
       - run: NODE_PATH="$RUNNER_TEMP/js/node_modules" pytest -q engine/tests

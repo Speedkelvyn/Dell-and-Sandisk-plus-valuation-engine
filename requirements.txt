@@ -1,0 +1,6 @@
+# Everything the app needs. Python 3.10 or newer.
+streamlit>=1.50
+numpy>=1.24
+pandas>=2.0
+openpyxl>=3.1
+yfinance>=0.2

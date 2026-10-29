@@ -571,7 +571,7 @@ def monte_carlo(
         for g in S["margins"]:
             S["margins"][g][1] += d_core if g == km else d_core / 2 if g == ks else d_csg
         w = rng.triangular(w0 + wacc_lo, w0, w0 + wacc_hi)
-        trial["terminal"]["g"] = rng.triangular(g_lo, inp["terminal"]["g"], g_hi)
+        trial["terminal"]["g"] = rng.triangular(g_lo, min(max(inp["terminal"]["g"], g_lo), g_hi), g_hi)
         if w - trial["terminal"]["g"] < 0.01:
             continue
         vals.append(dcf(trial, S, w)["perShare"])

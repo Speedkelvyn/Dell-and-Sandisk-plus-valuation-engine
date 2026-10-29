@@ -1,10 +1,30 @@
-# Dell and Sandisk Valuations, and the Engine Behind Them
+# Stock Valuation Engine, with Dell and Sandisk Worked Through
 
-Two interactive discounted-cash-flow models, for Dell Technologies and Sandisk, and the valuation engine that produced them. One set of formulas runs in three places: the browser, Python and an Excel workbook with live formulas. Tests hold the three to the same numbers.
+A valuation engine for your own stocks. Type tickers, get a fair value for each, then open any one to change the assumptions and watch the value move. Discounted cash flow, Monte Carlo and comparables run together, and every input is tagged with where it came from. The engine also produced two interactive models, for Dell Technologies and Sandisk, published below.
 
-**Open the models:** https://speedkelvyn.github.io/Dell-and-Sandisk-plus-valuation-engine/
+**Open the Dell and Sandisk models:** https://speedkelvyn.github.io/Dell-and-Sandisk-plus-valuation-engine/
 
-## Results
+## Use the app
+
+Windows: double-click `run_app.bat`. Mac or Linux: double-click `run_app.command` (or run `./run_app.command`). The first run sets up its own environment, which takes about a minute, and then opens the app in your browser. Python 3.10 or newer is required. Manual route:
+
+```bash
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+| Tab | What it does |
+|---|---|
+| Watchlist | Paste tickers, press Value all. A table ranks them by upside to fair value with the call, confidence, Bear/Base/Bull range and earnings-quality grade. Click a row for the full valuation. |
+| Portfolio | Enter ticker, shares and (optionally) cost per share. Totals market value, model fair value, upside and gain or loss across the positions. |
+| Value one stock | Value ranges (football field), cash flows and cases, Monte Carlo and comparables, what the price implies (reverse DCF), earnings-quality checks, and Excel and HTML downloads. The Change the assumptions panel moves beta, equity risk premium, risk-free rate, terminal growth, exit multiple, growth, margins and capex, and re-values on the spot. |
+| How it works | The method in one page. |
+
+Pick Try the examples on the Watchlist tab to see everything without internet. Live data comes from Yahoo Finance through `yfinance` and is saved once a day in `my_data/cache`, so a second run is instant. Lists and holdings are saved in `my_data/` on your computer and excluded from git. A ticker whose data leaves a gap the model needs is listed as Needs inputs with the missing figures named; the engine never fills a gap with zero.
+
+The same functions are available without the app: `from service import value_ticker, value_many` (in `engine/`).
+
+## Worked examples: Dell and Sandisk
 
 | | Dell Technologies (DELL) | Sandisk (SNDK) |
 |---|---|---|
@@ -33,10 +53,10 @@ Fair value blends the DCF, the Monte Carlo median, the comparables and the peer 
 
 Every input carries a tag: sourced (read from a feed), derived (computed from sourced numbers, formula given) or assumption (a modelling choice that can be changed). Missing debt, cash or yield data stops the model rather than defaulting to zero.
 
-## Run it
+## Command line
 
 ```bash
-pip install -r engine/requirements.txt
+pip install -r requirements.txt
 
 python engine/run_valuation.py dell                      # print the full valuation
 python engine/run_valuation.py sndk --scenario Bull
@@ -60,6 +80,8 @@ python engine/web/build_page.py dell/dell_inputs.json dell/index.html
 
 | Path | Contents |
 |---|---|
+| `app.py`, `run_app.bat`, `run_app.command`, `requirements.txt` | The Streamlit app and the launchers that set it up and open it |
+| `engine/service.py` | The engine as a plain API for the app: valuing one ticker or many, assumption overrides, reverse DCF, sensitivity grids, portfolio totals, exports |
 | `dell/`, `sndk/` | Inputs file, interactive page and Excel workbook for each company; Dell's football-field chart; Sandisk's notebook |
 | `engine/valuation_v2.py` | The engine: segments, margins, FCFF, WACC, DCF, equity bridge, reverse DCF, sensitivity, Monte Carlo, comparables, verdict |
 | `engine/web/` | The same engine in JavaScript (`model.js`), the research module (`research.js`), the page template and its builder |
@@ -68,11 +90,12 @@ python engine/web/build_page.py dell/dell_inputs.json dell/index.html
 | `engine/excel_model.py` | The workbook with live formulas and a scenario switch |
 | `engine/framework.py` | The valuation one step at a time, with every formula shown with its numbers |
 | `engine/run_valuation.py`, `engine/value_ticker.py` | Command-line entry points |
-| `engine/tests/` | The Python engine reproduces the published page figures, agrees with the JavaScript engine on both companies, and `value_ticker.py` writes every output offline from a saved snapshot |
+| `engine/tests/` | The Python engine reproduces the published page figures and agrees with the JavaScript engine on both companies; `value_ticker.py` writes every output offline from a saved snapshot; `service.py` moves values the right way for each assumption and isolates a failing ticker; the app runs end to end on the examples |
 
 ## Tests
 
 ```bash
+pip install -r requirements.txt pytest
 npm install jstat@1.9.6          # used by the JavaScript parity tests
 NODE_PATH=$PWD/node_modules pytest -q engine/tests
 ```

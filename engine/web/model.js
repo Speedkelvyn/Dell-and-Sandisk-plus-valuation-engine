@@ -684,7 +684,7 @@
       for (const g of Object.keys(S.margins))
         S.margins[g][1] += g === km ? dCore : g === ks ? dCore / 2 : dCSG;
       const w = R.tri(w0 + o.waccLo, w0, w0 + o.waccHi);
-      I.terminal.g = R.tri(o.gLo, inp.terminal.g, o.gHi);
+      I.terminal.g = R.tri(o.gLo, Math.min(Math.max(inp.terminal.g, o.gLo), o.gHi), o.gHi);
       if (w - I.terminal.g < 0.01) continue;
       vals.push(dcf(I, S, { wacc: w }).perShare);
     }
