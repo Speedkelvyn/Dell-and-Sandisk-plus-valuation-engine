@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dell and Sandisk Valuations</title>
+    <meta
+      name="description"
+      content="Interactive discounted-cash-flow valuations of Dell Technologies and Sandisk, and the open valuation engine behind them, which runs identically in Excel, Python and the browser."
+    />
+    <meta property="og:title" content="Dell and Sandisk Valuations" />
+    <meta
+      property="og:description"
+      content="Interactive DCF models of Dell Technologies and Sandisk, and the valuation engine behind them."
+    />
+    <meta property="og:type" content="website" />
+    <style>
+      :root {
+        --bg: #fafaf7;
+        --surface: #ffffff;
+        --text: #1d2125;
+        --muted: #5b646d;
+        --line: #dcdfe3;
+        --accent: #0b5c8a;
+        --bad: #a63c2a;
+        --ok: #2f6b3f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #14171a;
+          --surface: #1c2024;
+          --text: #e7e9eb;
+          --muted: #9aa3ab;
+          --line: #2f353b;
+          --accent: #6fb7e0;
+          --bad: #e08a78;
+          --ok: #7fc08f;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          16px/1.6 system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+      }
+      main {
+        max-width: 60rem;
+        margin: 0 auto;
+        padding: 2.5rem 1rem 4rem;
+      }
+      a {
+        color: var(--accent);
+      }
+      h1 {
+        font-size: 1.9rem;
+        line-height: 1.2;
+        margin: 0.25rem 0 0.75rem;
+      }
+      h2 {
+        font-size: 1.25rem;
+        margin: 2.5rem 0 0.75rem;
+      }
+      .back {
+        font-size: 0.9rem;
+        margin: 0;
+      }
+      .lede {
+        color: var(--muted);
+        max-width: 42rem;
+        margin: 0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+        gap: 1rem;
+        margin-top: 1.5rem;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 1.25rem;
+      }
+      .card h3 {
+        margin: 0;
+        font-size: 1.15rem;
+      }
+      .tag {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin: 0 0 0.75rem;
+      }
+      .call {
+        font-weight: 600;
+        margin: 0;
+      }
+      .call.over {
+        color: var(--bad);
+      }
+      .call.fair {
+        color: var(--ok);
+      }
+      .big {
+        font-size: 1.6rem;
+        font-weight: 600;
+        margin: 0 0 0.75rem;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.2rem 1rem;
+        margin: 0 0 1rem;
+        font-size: 0.92rem;
+      }
+      dt {
+        color: var(--muted);
+      }
+      dd {
+        margin: 0;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem 1rem;
+        font-size: 0.92rem;
+      }
+      .links a.primary {
+        font-weight: 600;
+      }
+      ol {
+        padding-left: 1.2rem;
+      }
+      li {
+        margin-bottom: 0.4rem;
+      }
+      pre {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0.9rem 1rem;
+        overflow-x: auto;
+        font-size: 0.88rem;
+      }
+      .note {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin-top: 2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="back">
+        <a href="https://speedkelvyn.github.io/Speedy.github.io/">← Kelvin Afful, portfolio</a>
+      </p>
+      <h1>Dell and Sandisk valuations</h1>
+      <p class="lede">
+        Two interactive discounted-cash-flow models and the engine behind them. The same engine runs in Excel,
+        Python and the browser. Each model lets you switch Bear, Base and Bull cases and edit any input.
+      </p>
+
+      <div class="grid">
+        <article class="card">
+          <h3>Dell Technologies Inc.</h3>
+          <p class="tag">Technology hardware · NYSE: DELL · valued 2026-10-16</p>
+          <p class="call over">Overvalued</p>
+          <p class="big">$311.65 <span class="tag">fair value against a $473.39 price</span></p>
+          <dl>
+            <dt>Bear to Bull</dt>
+            <dd>$145.59 – $411.88</dd>
+            <dt>WACC / cost of equity</dt>
+            <dd>11.58% / 12.14%</dd>
+            <dt>Beta (used / daily)</dt>
+            <dd>1.67 / 1.99</dd>
+            <dt>Comparables</dt>
+            <dd>$369.41</dd>
+            <dt>Earnings quality</dt>
+            <dd>Grade B</dd>
+          </dl>
+          <p class="links">
+            <a class="primary" href="dell/">Interactive model</a>
+            <a href="dell/DELL_valuation.xlsx">Excel workbook</a>
+            <a href="dell/DELL_football_field.png">Football field</a>
+            <a href="dell/dell_inputs.json">Inputs</a>
+          </p>
+        </article>
+
+        <article class="card">
+          <h3>Sandisk Corporation</h3>
+          <p class="tag">Memory &amp; storage · NasdaqGS: SNDK · valued 2026-10-20</p>
+          <p class="call fair">Fairly valued, low confidence</p>
+          <p class="big">$1,315.59 <span class="tag">fair value against a $1,365.38 price</span></p>
+          <dl>
+            <dt>Bear to Bull</dt>
+            <dd>$627.47 – $2,367.26</dd>
+            <dt>WACC / cost of equity</dt>
+            <dd>14.58% / 14.59%</dd>
+            <dt>Beta (used / daily)</dt>
+            <dd>2.24 / 2.85</dd>
+            <dt>Comparables / peer regression</dt>
+            <dd>$1,153.35 / $883.02</dd>
+            <dt>Earnings quality</dt>
+            <dd>Grade C</dd>
+          </dl>
+          <p class="links">
+            <a class="primary" href="sndk/">Interactive model</a>
+            <a href="sndk/SNDK_valuation.xlsx">Excel workbook</a>
+            <a
+              href="https://github.com/Speedkelvyn/Dell-and-Sandisk-plus-valuation-engine/blob/main/sndk/SNDK_valuation.ipynb"
+              >Notebook</a
+            >
+            <a href="sndk/SNDK_inputs.json">Inputs</a>
+          </p>
+        </article>
+      </div>
+
+      <h2>How the valuation works</h2>
+      <ol>
+        <li>
+          <strong>History and earnings quality.</strong> Five years of statements screened with the Beneish
+          M-score, Sloan accruals and cash conversion.
+        </li>
+        <li>
+          <strong>Future cash flows.</strong> Free cash flow to the firm for operating companies, excess
+          returns for banks and insurers, dividends for REITs.
+        </li>
+        <li>
+          <strong>Discount rate.</strong> CAPM cost of equity with beta regressed on two years of daily
+          returns, blended into WACC.
+        </li>
+        <li>
+          <strong>Discount.</strong> A ten-year explicit forecast plus terminal value, cross-checked against
+          an exit multiple.
+        </li>
+        <li>
+          <strong>Price.</strong> Enterprise value bridged to equity value and divided by diluted shares.
+        </li>
+        <li>
+          <strong>Verdict.</strong> DCF, Monte Carlo, comparables and regression blended into a call and an
+          expected alpha. Calls use a ±10% band around the price.
+        </li>
+      </ol>
+      <p>
+        Missing debt, cash or yield data stops the model instead of defaulting to zero, so every published
+        number traces back to a source.
+      </p>
+
+      <h2>Value another company</h2>
+      <p>
+        The engine builds the same page and workbook for any listed ticker from Yahoo Finance data.
+        <a href="https://github.com/Speedkelvyn/Dell-and-Sandisk-plus-valuation-engine/tree/main/engine"
+          >The code is in <code>engine/</code></a
+        >.
+      </p>
+      <pre><code>pip install -r engine/requirements.txt
+python engine/value_ticker.py AAPL --peers MSFT GOOGL META</code></pre>
+
+      <p class="note">
+        Prices as of the dates shown. For illustration only, not investment advice. Check the data-quality
+        warnings before relying on a result.
+      </p>
+    </main>
+  </body>
+</html>

@@ -131,9 +131,7 @@ def test_class_shares_and_default_folder():
     assert value_ticker.clean_ticker("brk-b") == "BRK-B"
     assert value_ticker.default_folder("BRK-B").name == "brk-b"
     assert value_ticker.default_folder("BF.B").name == "bf-b"
-    assert (
-        value_ticker.default_folder("AAPL").parent == ENGINE.parent
-    )  # valuations/aapl, next to dell and sndk
+    assert value_ticker.default_folder("AAPL").parent == ENGINE.parent  # aapl/, next to dell/ and sndk/
 
 
 def test_need_a_ticker_or_a_snapshot():

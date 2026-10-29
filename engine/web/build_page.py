@@ -21,9 +21,9 @@ HERE = pathlib.Path(__file__).resolve().parent
 ENGINE_FILES = ("model.js", "research.js")
 SITE_LINKS = (
     '<nav class="site-links" aria-label="Site">\n'
-    '  <a href="https://github.com/Speedkelvyn/Speedy.github.io/tree/main/valuations/engine"'
+    '  <a href="https://github.com/Speedkelvyn/Dell-and-Sandisk-plus-valuation-engine/tree/main/engine"'
     ' target="_blank" rel="noopener">Python engine ↗</a>\n'
-    '  <a href="../../">← Portfolio</a>\n'
+    '  <a href="https://speedkelvyn.github.io/Speedy.github.io/">← Portfolio</a>\n'
     "</nav>"
 )
 

@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Quarto
+/.quarto/
+*_files/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*
+
+# JavaScript
+node_modules/
+
+# Written by value_ticker.py when run without --out
+/*/*_yahoo_*.json

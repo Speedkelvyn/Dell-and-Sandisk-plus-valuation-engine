@@ -1,6 +1,6 @@
 """value_ticker.py: value any listed company with one command.
 
-    python value_ticker.py AAPL                                  # fetch, value, write valuations/aapl/
+    python value_ticker.py AAPL                                  # fetch, value, write aapl/
     python value_ticker.py AAPL --peers MSFT GOOGL META --scenario Bull
     python value_ticker.py --snapshot AAPL_yahoo_2026-10-21.json  # rerun on saved data, no network
     python value_ticker.py AAPL --out my_folder --no-excel --no-page
@@ -14,7 +14,8 @@ Steps
     4. Write, into one folder: the inputs file, the Yahoo snapshot, the interactive page (index.html) and the
        Excel workbook with live formulas.
 
-The default folder, valuations/<ticker>/, has the same layout as dell/ and sndk/, so the page works where it is.
+The default folder, <ticker>/ at the top of the repository, has the same layout as dell/ and sndk/, so the page
+works where it is.
 Exit status: 0 valued, 2 the inputs are missing something the model needs (the files are still written, so the
 gaps can be filled in by hand and the page or `run_valuation.py` rerun).
 
@@ -120,7 +121,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--peers", nargs="*", help="comparable tickers (default: Yahoo's related symbols)")
     ap.add_argument("--scenario", default="Base", choices=["Bear", "Base", "Bull"])
     ap.add_argument("--mc", type=int, default=5000, help="Monte Carlo draws (default 5000)")
-    ap.add_argument("--out", type=pathlib.Path, help="output folder (default valuations/<ticker>)")
+    ap.add_argument(
+        "--out", type=pathlib.Path, help="output folder (default <ticker>/ next to dell/ and sndk/)"
+    )
     ap.add_argument("--no-excel", action="store_true", help="skip the Excel workbook")
     ap.add_argument("--no-page", action="store_true", help="skip the interactive page")
     a = ap.parse_args(argv)

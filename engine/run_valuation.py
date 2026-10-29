@@ -1,6 +1,6 @@
 """run_valuation.py: the Python version of the valuation pages.
 
-Runs the same engine as the interactive terminals (valuations/dell, valuations/sndk)
+Runs the same engine as the interactive terminals (dell/, sndk/)
 on a company's inputs file and prints the full result: cost of capital, the three
 DCF scenarios, Monte Carlo, comparables, earnings quality and the verdict.
 

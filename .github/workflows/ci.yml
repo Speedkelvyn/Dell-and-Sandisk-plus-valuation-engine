@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python:
+    name: Lint and test (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install --prefix "$RUNNER_TEMP/js" jstat@1.9.6
+      - run: pip install ruff pytest numpy pandas openpyxl scipy
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: NODE_PATH="$RUNNER_TEMP/js/node_modules" pytest -q engine/tests
+
+  html:
+    name: Validate and format check (HTML and JavaScript)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npx --yes html-validate@8.24.1 $(git ls-files '*.html' ':!dell/index.html' ':!sndk/index.html')
+      - run: npx --yes prettier@3.3.3 --check $(git ls-files '*.html' '*.js')
