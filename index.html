@@ -108,6 +108,9 @@
       .call.fair {
         color: var(--ok);
       }
+      .call.under {
+        color: var(--ok);
+      }
       .big {
         font-size: 1.6rem;
         font-weight: 600;
@@ -174,18 +177,18 @@
       <div class="grid">
         <article class="card">
           <h3>Dell Technologies Inc.</h3>
-          <p class="tag">Technology hardware · NYSE: DELL · valued 2026-10-16</p>
+          <p class="tag">Technology hardware · NYSE: DELL · valued 2026-11-05</p>
           <p class="call over">Overvalued</p>
-          <p class="big">$311.65 <span class="tag">fair value against a $473.39 price</span></p>
+          <p class="big">$278.10 <span class="tag">fair value against a $326.48 price</span></p>
           <dl>
             <dt>Bear to Bull</dt>
-            <dd>$145.59 – $411.88</dd>
+            <dd>$151.10 – $428.06</dd>
             <dt>WACC / cost of equity</dt>
-            <dd>11.58% / 12.14%</dd>
+            <dd>11.30% / 12.11%</dd>
             <dt>Beta (used / daily)</dt>
-            <dd>1.67 / 1.99</dd>
+            <dd>1.71 / 2.06</dd>
             <dt>Comparables</dt>
-            <dd>$369.41</dd>
+            <dd>$249.12</dd>
             <dt>Earnings quality</dt>
             <dd>Grade B</dd>
           </dl>
@@ -199,18 +202,20 @@
 
         <article class="card">
           <h3>Sandisk Corporation</h3>
-          <p class="tag">Memory &amp; storage · NasdaqGS: SNDK · valued 2026-10-20</p>
-          <p class="call fair">Fairly valued, low confidence</p>
-          <p class="big">$1,315.59 <span class="tag">fair value against a $1,365.38 price</span></p>
+          <p class="tag">
+            Memory &amp; storage · NasdaqGS: SNDK · valued 2026-11-05 (before the 8-for-1 split)
+          </p>
+          <p class="call under">Undervalued, low confidence</p>
+          <p class="big">$1,478.94 <span class="tag">fair value against an $842.61 price</span></p>
           <dl>
             <dt>Bear to Bull</dt>
-            <dd>$627.47 – $2,367.26</dd>
+            <dd>$715.82 – $2,978.08</dd>
             <dt>WACC / cost of equity</dt>
-            <dd>14.58% / 14.59%</dd>
+            <dd>14.60% / 14.62%</dd>
             <dt>Beta (used / daily)</dt>
-            <dd>2.24 / 2.85</dd>
-            <dt>Comparables / peer regression</dt>
-            <dd>$1,153.35 / $883.02</dd>
+            <dd>2.30 / 2.95</dd>
+            <dt>Comparables</dt>
+            <dd>$939.12</dd>
             <dt>Earnings quality</dt>
             <dd>Grade C</dd>
           </dl>
@@ -290,8 +295,9 @@ streamlit run app.py
 python engine/value_ticker.py AAPL --peers MSFT GOOGL META</code></pre>
 
       <p class="note">
-        Prices as of the dates shown. For illustration only, not investment advice. Check the data-quality
-        warnings before relying on a result.
+        Prices from the morning of 5 November 2026 (Yahoo Finance, 09:46 CT). Sandisk splits 8-for-1 on 20
+        November: divide its per-share figures by 8 from then. For illustration only, not investment advice.
+        Check the data-quality warnings before relying on a result.
       </p>
     </main>
   </body>

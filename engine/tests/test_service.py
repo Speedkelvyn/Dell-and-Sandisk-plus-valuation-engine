@@ -71,8 +71,8 @@ def test_service_matches_the_engine_exactly(dell):
 
 
 def test_published_valuations_keep_their_calls(dell, sndk):
-    assert dell.verdict["call"] == "OVERVALUED" and dell.upside < -0.3
-    assert sndk.verdict["call"] == "FAIRLY VALUED" and sndk.verdict["confidence"] == "low"
+    assert dell.verdict["call"] == "OVERVALUED" and -0.25 < dell.upside < -0.05
+    assert sndk.verdict["call"] == "UNDERVALUED" and sndk.verdict["confidence"] == "low"
 
 
 def test_unknown_scenario_is_reported_not_raised():
@@ -207,11 +207,11 @@ def test_inputs_and_snapshots_load_from_uploaded_text():
 def test_summary_table_ranks_by_upside_and_keeps_failures_last(dell, sndk):
     bad = service.Valuation(ticker="BAD", scenario="Base", error="Yahoo returned nothing for BAD")
     df = service.summary_table({"BAD": bad, "DELL": dell, "SNDK": sndk})
-    assert list(df["Ticker"]) == ["SNDK", "DELL", "BAD"]  # -3.7% beats -34%; the failure is last
+    assert list(df["Ticker"]) == ["SNDK", "DELL", "BAD"]  # +75% beats -15%; the failure is last
     assert list(df.columns) == service.SUMMARY_COLUMNS
     assert df.loc[df.Ticker == "BAD", "Status"].item() == "Error"
     assert df.loc[df.Ticker == "DELL", "Fair value"].item() == dell.fair_value
-    assert df.loc[df.Ticker == "DELL", "Street target"].item() == 593.0
+    assert df.loc[df.Ticker == "DELL", "Street target"].item() == 590.0
 
 
 def test_football_field_ranges_are_ordered_and_finite(dell, sndk):
@@ -303,8 +303,8 @@ def test_exports_are_real_files(dell):
 
 def test_reading_states_the_numbers_the_model_produced(dell, sndk):
     d = " ".join(service.reading(dell))
-    assert f"${dell.fair_value:,.2f}" in d and "above even the Bull case" in d and "0%" in d
-    assert "mean analyst target is $593.00" in d and "Earnings quality grade B" in d
+    assert f"${dell.fair_value:,.2f}" in d and "inside the DCF range" in d and "of draws" in d
+    assert "mean analyst target is $590.00" in d and "Earnings quality grade B" in d
     s = " ".join(service.reading(sndk))
     assert "inside the DCF range" in s and "Earnings quality grade C" in s
     assert service.reading(service.Valuation(ticker="X", scenario="Base", error="boom")) == []

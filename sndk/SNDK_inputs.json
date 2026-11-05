@@ -6,10 +6,10 @@
   "currency": "USD",
   "financial_currency": "USD",
   "units": "millions except per-share",
-  "valuation_date": "2026-10-20",
-  "price_date": "2026-10-20",
+  "valuation_date": "2026-11-05",
+  "price_date": "2026-11-05",
   "fiscal_year_end_next": "2027-07-03",
-  "balance_sheet_date": "2026-06-30",
+  "balance_sheet_date": "2026-09-30",
   "year_labels": [
    "FY27",
    "FY28",
@@ -24,20 +24,20 @@
   ],
   "sector": "Technology",
   "industry": "Computer Hardware",
-  "built": "live research (Yahoo Finance feeds via the Claude app browser)"
+  "built": "Yahoo Finance feeds, 5-Nov-2026 09:46 CT (snapshot sndk/SNDK_yahoo_2026-11-05.json); peers chosen: memory and storage makers"
  },
  "market": {
-  "price": 1365.38,
-  "prev_close": 1371.12,
-  "shares_basic": 144.527564,
-  "dilution": 11.0,
+  "price": 842.61,
+  "prev_close": 1037.4,
+  "shares_basic": 142.289365,
+  "dilution": 10.0,
   "dividend_ps": 0,
   "high_52w": 2354.39,
-  "low_52w": 142.76,
-  "eps_ntm": 266.2971,
-  "ebitda_ttm": 12616.999936,
-  "revenue_ttm": 20248.000512,
-  "total_debt_incl_dfs": 177.0
+  "low_52w": 183,
+  "eps_ntm": 287.25845,
+  "ebitda_ttm": 21212.000256,
+  "revenue_ttm": 28970.999808,
+  "total_debt_incl_dfs": 178.0
  },
  "model": "fcff",
  "rev_y0": 20248.0,
@@ -59,21 +59,21 @@
   "key_margin_label": "EBIT"
  },
  "y1_segments": {
-  "total": 49135.34089
+  "total": 49560.227
  },
  "scenarios": {
   "Bear": {
    "growth": {
     "total": [
-     0.13928929445756416,
-     0.11446697084317312,
-     0.08464464722878208,
-     0.06875125306014745
+     0.1725943329517033,
+     0.1394457497137775,
+     0.10129716647585164,
+     0.08040801653309615
     ]
    },
    "margins": {
     "total": [
-     0.615764519952588,
+     0.7267957612785199,
      0.1013192828105049
     ]
    }
@@ -81,32 +81,32 @@
   "Base": {
    "growth": {
     "total": [
-     0.18928929445756415,
-     0.15196697084317312,
-     0.10964464722878207,
-     0.08625125306014746
+     0.22259433295170328,
+     0.17694574971377747,
+     0.12629716647585165,
+     0.09790801653309615
     ]
    },
    "margins": {
     "total": [
-     0.7756718475136292,
-     0.3585419013815464
+     0.7984488578169342,
+     0.4140575220445124
     ]
    }
   },
   "Bull": {
    "growth": {
     "total": [
-     0.22928929445756416,
-     0.18196697084317312,
-     0.12964464722878208,
-     0.10025125306014745
+     0.26259433295170326,
+     0.20694574971377744,
+     0.14629716647585161,
+     0.11190801653309614
     ]
    },
    "margins": {
     "total": [
-     0.7756718475136292,
-     0.615764519952588
+     0.7984488578169342,
+     0.7267957612785199
     ]
    }
   }
@@ -115,12 +115,17 @@
   "corp_pct": 0,
   "tax0": 0.12168702466005993,
   "tax_lr": 0.18,
-  "da_pct": 0.015642327671744585,
-  "capex_pct": 0.015963345590381137,
-  "nwc_pct": 0.19213608477412158,
-  "nwc0": 6890.0,
+  "da_pct": 0.005384695039867454,
+  "capex_pct": 0.00624762693728211,
+  "da_lr_pct": 0.02789014243353899,
+  "capex_lr_pct": 0.026324968195457876,
+  "nwc_pct": 0.2009110688060919,
+  "nwc0": 8865.0,
   "interest_net": 73.0,
   "buyback_pct": 0
+ },
+ "monte_carlo": {
+  "sd_margin": 0.2
  },
  "terminal": {
   "method": "gordon",
@@ -129,37 +134,37 @@
   "exit_multiple": 12.0
  },
  "timing": {
-  "first_period": 0.7008898015058179,
-  "stub": 1,
+  "first_period": 0.6570841889117043,
+  "stub": 0.75564681724846,
   "mid_year": true
  },
  "capital": {
-  "rf": 0.05117,
+  "rf": 0.04871,
   "erp": 0.0423,
-  "rm": 0.09347,
+  "rm": 0.09101000000000001,
   "crp": 0,
-  "beta_raw": 2.8511470727980575,
+  "beta_raw": 2.946195389550384,
   "beta_source": "daily_adj",
-  "beta_custom": 2.8511470727980575,
-  "beta_daily": 2.8511470727980575,
+  "beta_custom": 2.946195389550384,
+  "beta_daily": 2.946195389550384,
   "beta_daily_stats": {
-   "beta": 2.8511470727980575,
-   "alpha": 0.009042481127501145,
-   "seBeta": 0.2727855976222091,
-   "seAlpha": 0.0028565372014878656,
-   "tBeta": 10.451970696586104,
-   "tAlpha": 3.165539424024041,
-   "r2": 0.2064147257846074,
-   "n": 422,
-   "alphaAnnual": 8.664548132507747,
-   "blume": 2.2402685387746986,
+   "beta": 2.946195389550384,
+   "alpha": 0.007951371365967401,
+   "seBeta": 0.2684726094495905,
+   "seAlpha": 0.0028265995436159825,
+   "tBeta": 10.973914231289854,
+   "tAlpha": 2.8130519528052615,
+   "r2": 0.2179959316972605,
+   "n": 434,
+   "alphaAnnual": 6.3582438713049125,
+   "blume": 2.3039509109987573,
    "ci95": [
-    2.316487301458528,
-    3.385806844137587
+    2.4199890750291866,
+    3.472401704071581
    ],
-   "volStock": 1.0426977580216334,
-   "volMkt": 0.16615337135133304,
-   "window": "2025-02-14 to 2026-10-20",
+   "volStock": 1.0546007219408977,
+   "volMkt": 0.1671285761066689,
+   "window": "2025-02-14 to 2026-11-05",
    "frequency": "daily (Yahoo adjusted closes)",
    "points": [
     [
@@ -1849,6 +1854,54 @@
     [
      0.0028397621299232068,
      -0.004186351489888662
+    ],
+    [
+     0.005782780405591659,
+     0.009403950383332749
+    ],
+    [
+     -0.012084271330631391,
+     -0.08510246512561404
+    ],
+    [
+     -0.005186972294159098,
+     -0.018161217068835334
+    ],
+    [
+     0.006963807836358971,
+     0.014175687457096409
+    ],
+    [
+     0.005969968881235133,
+     0.03923287364383454
+    ],
+    [
+     0.0027684824466034375,
+     0.07658414543435188
+    ],
+    [
+     -0.00304621703691077,
+     -0.053190180359955264
+    ],
+    [
+     -0.018175287778868343,
+     -0.13470172369644362
+    ],
+    [
+     -0.0051015258133173536,
+     -0.06587081096268588
+    ],
+    [
+     0.0036491924427315414,
+     0.04784766303832555
+    ],
+    [
+     0.015814699659663978,
+     -0.07911088446903125
+    ],
+    [
+     -0.03009254114015658,
+     -0.18834587434947903
     ]
    ],
    "xmin": -0.05974960534553109,
@@ -2278,7 +2331,19 @@
     "2026-10-15",
     "2026-10-16",
     "2026-10-19",
-    "2026-10-20"
+    "2026-10-20",
+    "2026-10-21",
+    "2026-10-22",
+    "2026-10-23",
+    "2026-10-26",
+    "2026-10-27",
+    "2026-10-28",
+    "2026-10-29",
+    "2026-10-30",
+    "2026-11-02",
+    "2026-11-03",
+    "2026-11-04",
+    "2026-11-05"
    ],
    "stock": [
     36,
@@ -2703,7 +2768,19 @@
     1394.8299560546875,
     1299.300048828125,
     1371.1199951171875,
-    1365.3800048828125
+    1365.3800048828125,
+    1378.219970703125,
+    1260.9300537109375,
+    1238.030029296875,
+    1255.5799560546875,
+    1304.8399658203125,
+    1404.77001953125,
+    1330.050048828125,
+    1150.8900146484375,
+    1075.0799560546875,
+    1126.52001953125,
+    1037.4000244140625,
+    842.010009765625
    ],
    "index": [
     6115.06982421875,
@@ -3128,17 +3205,29 @@
     7744.06005859375,
     7659.43994140625,
     7690.72998046875,
-    7712.56982421875
+    7712.56982421875,
+    7757.169921875,
+    7663.43017578125,
+    7623.68017578125,
+    7676.77001953125,
+    7722.60009765625,
+    7743.97998046875,
+    7720.39013671875,
+    7580.06982421875,
+    7541.39990234375,
+    7568.919921875,
+    7688.6201171875,
+    7457.25
    ]
   },
-  "kd_pretax": 0.05707,
+  "kd_pretax": 0.054610000000000006,
   "tax_marginal": 0.21,
   "size_premium": 0
  },
  "bridge": {
-  "cash": 4762.0,
+  "cash": 5136.0,
   "core_debt": 0.0,
-  "leases": 177.0,
+  "leases": 178.0,
   "dfs_receivables": 0,
   "dfs_lease_equipment": 0,
   "dfs_debt": 0,
@@ -3147,18 +3236,18 @@
  },
  "consensus": {
   "eps": {
-   "FY27": 214.82326,
-   "FY28": 266.2971
+   "FY27": 227.80235,
+   "FY28": 287.25845
   },
   "revenue": {
-   "FY27": 49135.34089,
-   "FY28": 58436.1349
+   "FY27": 49560.227,
+   "FY28": 60592.05267
   },
   "targets": {
-   "low": 1000,
-   "mean": 2173,
-   "median": 2150,
-   "high": 3600,
+   "low": 870,
+   "mean": 2023.625,
+   "median": 2000,
+   "high": 3000,
    "n": 24
   },
   "ratings": {
@@ -3170,52 +3259,52 @@
   },
   "recent": [
    [
-    "Mizuho",
-    "Outperform",
-    2050,
-    "2026-10-06"
+    "Fox Advisors",
+    "Equal-Weight (downgrade)",
+    null,
+    "2026-11-02"
    ],
    [
     "Rosenblatt",
     "Buy",
     2400,
-    "2026-09-22"
-   ],
-   [
-    "Mizuho",
-    "Outperform",
-    1875,
-    "2026-08-25"
-   ],
-   [
-    "RBC Capital",
-    "Sector Perform",
-    1600,
-    "2026-08-14"
+    "2026-10-30"
    ],
    [
     "Wells Fargo",
     "Equal-Weight",
-    1550,
-    "2026-08-14"
+    1300,
+    "2026-10-30"
    ],
    [
-    "Wedbush",
+    "RBC Capital",
+    "Sector Perform",
+    1400,
+    "2026-10-30"
+   ],
+   [
+    "Susquehanna",
+    "Positive",
+    2720,
+    "2026-10-30"
+   ],
+   [
+    "Evercore ISI Group",
     "Outperform",
-    2000,
-    "2026-08-14"
+    2500,
+    "2026-10-30"
    ],
    [
     "Cantor Fitzgerald",
     "Overweight",
-    2900,
-    "2026-08-14"
+    2200,
+    "2026-10-26"
    ],
    [
-    "Argus Research",
-    "Buy (upgrade)",
-    null,
-    "2026-08-10"
+    "Mizuho",
+    "Outperform",
+    2050,
+    "2026-10-06"
    ]
   ],
   "note": "Built from Yahoo Finance consensus. Base-case growth starts at consensus revenue for the next two fiscal years and fades after that."
@@ -3240,99 +3329,99 @@
   "rows": {
    "000660.KS": [
     "SK hynix Inc.",
-    1223000,
-    891403886.395392,
-    803090097.7664,
-    2.391,
-    2.6145825,
-    5.593,
-    4.245,
-    0.3195,
-    21113138.577408,
-    189170609.815552,
+    1264000,
+    891339059.232768,
+    909251019.014144,
+    2.466,
+    2.3878427,
+    4.206,
+    3.376,
+    0.4741,
+    15799000.498176,
+    269336677.711872,
     null,
-    0.0011999999,
-    0.92679
+    0.0021,
+    0.92542
    ],
    "005930.KS": [
     "Samsung Electronics Co., Ltd.",
-    211500,
-    1377271591.993344,
-    1235482776.174592,
-    1.545,
-    2.9177794,
-    5.44,
-    2.546,
-    0.5143,
-    22408721.334272,
-    485272047.321088,
+    201500,
+    1312153311.117312,
+    1232624743.87456,
+    1.594,
+    2.6515288,
+    3.808,
+    2.073,
+    0.64669997,
+    17191200.096256,
+    594479375.450112,
     null,
-    0.0069,
-    0.30794
+    0.0844,
+    0.41577998
    ],
    "285A.T": [
     "Kioxia Holdings Corporation",
-    13140,
-    6998825.893888,
-    21644961.644544,
+    9324,
+    14898871.402496,
+    16536059.24864,
     null,
     null,
-    9.138,
-    5.754,
+    3.867,
+    2.854,
     null,
-    837830.967296,
-    3761945.96864,
-    8.984965,
-    0,
-    0.87108004
+    802728.968192,
+    5793635.106816,
+    5.0867376,
+    0.0056,
+    1.43709
    ],
    "MU": [
     "Micron Technology, Inc.",
-    896.07,
-    1013834.448896,
-    985569.886208,
-    2.226,
-    4.3310623,
-    9.055,
-    7.4,
-    0.1719,
+    679.22,
+    768485.228544,
+    861486.710784,
+    2.398,
+    3.2692451,
+    7.915,
+    6.468,
+    0.17709999,
     5178.999808,
     133188.001792,
-    7.3238254,
-    0.0007,
+    5.5514507,
+    0.0008,
     0.8826
    ],
    "STX": [
     "Seagate Technology Holdings plc",
-    675.13,
-    153519.849472,
-    151962.959872,
-    2.081,
-    11.847629,
-    33.755,
-    12.461,
-    0.57,
-    3897.999872,
-    12195.00032,
-    70.65725,
-    0.0045,
-    3.7152898
+    471.56,
+    108251.83232,
+    129293.312,
+    2.201,
+    7.2168455,
+    22.037,
+    9.37,
+    0.6344,
+    2672.0,
+    13799.000064,
+    31.37041,
+    0.0055,
+    2.5935102
    ],
    "WDC": [
     "Western Digital Corporation",
-    364.32,
-    136373.4528,
-    126598.127616,
-    2.169,
-    10.948699,
-    25.31,
-    9.799,
-    0.616,
-    1191.000064,
-    12919.000064,
-    14.837501,
-    0.0017,
-    1.30853
+    272.9287,
+    102163.562496,
+    120825.102336,
+    2.344,
+    6.7548523,
+    19.142,
+    8.343,
+    0.6342,
+    922.0,
+    14481.999872,
+    10.919332,
+    0.0022,
+    1.29596
    ]
   },
   "core_set": [
@@ -3352,7 +3441,7 @@
    "ev_sales": 0
   },
   "stat": "median",
-  "subject_growth": 0.23959999
+  "subject_growth": 0.261
  },
  "verdict": {
   "weights": {
@@ -3394,7 +3483,7 @@
     -14.78,
     -4.63,
     -11.32,
-    null
+    73.76
    ],
    "cfo": [
     -713.0,
@@ -3427,25 +3516,25 @@
   "annual_note": "Yahoo Finance standardised statements. Operating income can differ from the company's GAAP line where Yahoo normalises unusual items.",
   "quarters": {
    "labels": [
-    "2025-06",
     "2025-09",
     "2025-12",
     "2026-03",
-    "2026-06"
+    "2026-06",
+    "2026-09"
    ],
    "revenue": [
-    1901.0,
     2308.0,
     3025.0,
     5950.0,
-    8965.0
+    8965.0,
+    11031.0
    ],
    "op_income": [
-    51.0,
     192.0,
     1075.0,
     4164.0,
-    7037.0
+    7037.0,
+    8780.0
    ]
   },
   "quarter_names": {
@@ -3460,54 +3549,6 @@
    ]
   ],
   "prices": [
-   [
-    "2026-06-22",
-    2273.72998046875
-   ],
-   [
-    "2026-06-23",
-    1963.5999755859375
-   ],
-   [
-    "2026-06-24",
-    1914.4599609375
-   ],
-   [
-    "2026-06-25",
-    2335
-   ],
-   [
-    "2026-06-26",
-    2090.7099609375
-   ],
-   [
-    "2026-06-29",
-    2050.389892578125
-   ],
-   [
-    "2026-06-30",
-    2273.72998046875
-   ],
-   [
-    "2026-07-01",
-    2032.219970703125
-   ],
-   [
-    "2026-07-02",
-    1745
-   ],
-   [
-    "2026-07-06",
-    1744.4300537109375
-   ],
-   [
-    "2026-07-07",
-    1617.699951171875
-   ],
-   [
-    "2026-07-08",
-    1727.1800537109375
-   ],
    [
     "2026-07-09",
     1858.27001953125
@@ -3799,6 +3840,54 @@
    [
     "2026-10-20",
     1365.3800048828125
+   ],
+   [
+    "2026-10-21",
+    1378.219970703125
+   ],
+   [
+    "2026-10-22",
+    1260.9300537109375
+   ],
+   [
+    "2026-10-23",
+    1238.030029296875
+   ],
+   [
+    "2026-10-26",
+    1255.5799560546875
+   ],
+   [
+    "2026-10-27",
+    1304.8399658203125
+   ],
+   [
+    "2026-10-28",
+    1404.77001953125
+   ],
+   [
+    "2026-10-29",
+    1330.050048828125
+   ],
+   [
+    "2026-10-30",
+    1150.8900146484375
+   ],
+   [
+    "2026-11-02",
+    1075.0799560546875
+   ],
+   [
+    "2026-11-03",
+    1126.52001953125
+   ],
+   [
+    "2026-11-04",
+    1037.4000244140625
+   ],
+   [
+    "2026-11-05",
+    842.010009765625
    ]
   ]
  },
@@ -3902,19 +3991,19 @@
  "notes": {
   "kd": "(rf + AAA spread, coverage 170.8x)",
   "erp": "Damodaran implied ERP, Jan-2026 (edit to update)",
-  "rm": "Rm = 10Y yield + ERP (5.12% + 4.23%). Replace with your own expected S&P 500 return.",
+  "rm": "Rm = 10Y yield + ERP (4.87% + 4.23%). Replace with your own expected S&P 500 return.",
   "segments": "Single revenue line. Split into reported segments for a sell-side-grade model.",
-  "operating": "Margins: TTM 61.6%, 4-year average 10.1%, low -21.3%. D&A and capex are 3-year averages of sales.",
+  "operating": "Margins: TTM 72.7%, 4-year average 10.1%, low -21.3%. D&A and capex start at the last four quarters' share of sales and fade to the median of the annual years by year 5.",
   "comps": "All multiples come from the same vendor, so definitions match across peers."
  },
  "sources": {
-  "Price, market cap, shares, beta (5Y), forward P/E, EV multiples, debt, cash, EBITDA, revenue (TTM), targets": "Yahoo Finance quoteSummary, 2026-10-20",
-  "Annual and quarterly statements": "Yahoo Finance fundamentals-timeseries, 2026-10-20",
-  "Daily prices and beta regression": "Yahoo Finance chart API (adjusted closes) for SNDK and ^GSPC, 2025-02-14 to 2026-10-20",
-  "Risk-free rate": "^TNX (10-year Treasury yield) 5.117%, 2026-10-20",
+  "Price, market cap, shares, beta (5Y), forward P/E, EV multiples, debt, cash, EBITDA, revenue (TTM), targets": "Yahoo Finance quoteSummary, 2026-11-05",
+  "Annual and quarterly statements": "Yahoo Finance fundamentals-timeseries, 2026-11-05",
+  "Daily prices and beta regression": "Yahoo Finance chart API (adjusted closes) for SNDK and ^GSPC, 2025-02-14 to 2026-11-05",
+  "Risk-free rate": "^TNX (10-year Treasury yield) 4.871%, 2026-11-05",
   "Equity risk premium": "Damodaran implied ERP, Jan-2026 (assumption, editable)",
   "Cost of debt": "Synthetic rating AAA from interest coverage 170.8x (Damodaran large-firm table)",
-  "Peers": "Yahoo related symbols: 000660.KS, 005930.KS, 285A.T, MU, STX, WDC"
+  "Peers": "Chosen peers: 000660.KS, 005930.KS, 285A.T, MU, STX, WDC"
  },
  "provenance": {
   "market.price": [
@@ -3947,7 +4036,7 @@
   ],
   "market.total_debt_incl_dfs": [
    "sourced",
-   "Yahoo Finance fundamentals (quarterly) TotalDebt, 2026-06-30"
+   "Yahoo Finance fundamentals (quarterly) TotalDebt, 2026-09-30"
   ],
   "rev_y0": [
    "sourced",
@@ -4039,19 +4128,31 @@
   ],
   "operating.da_pct": [
    "derived",
-   "Yahoo Finance fundamentals (annual) D&A \u00f7 revenue, 3-year average"
+   "Yahoo Finance fundamentals (quarterly) D&A \u00f7 revenue, last 4 quarters"
   ],
   "operating.capex_pct": [
    "derived",
-   "Yahoo Finance fundamentals (annual) capex \u00f7 revenue, 3-year average"
+   "Yahoo Finance fundamentals (quarterly) capex \u00f7 revenue, last 4 quarters"
+  ],
+  "operating.da_lr_pct": [
+   "derived",
+   "Yahoo Finance fundamentals (annual) D&A \u00f7 revenue, median of the annual years (through-cycle), reached in year 5"
+  ],
+  "operating.capex_lr_pct": [
+   "derived",
+   "Yahoo Finance fundamentals (annual) capex \u00f7 revenue, median of the annual years (through-cycle), reached in year 5"
+  ],
+  "monte_carlo.sd_margin": [
+   "derived",
+   "standard deviation of the annual operating margins, clamped 1\u201320 points"
   ],
   "operating.nwc_pct": [
    "derived",
-   "Yahoo Finance fundamentals (quarterly) (receivables + inventory \u2212 payables) \u00f7 (4 \u00d7 revenue), quarter to 2026-06-30"
+   "Yahoo Finance fundamentals (quarterly) (receivables + inventory \u2212 payables) \u00f7 (4 \u00d7 revenue), quarter to 2026-09-30"
   ],
   "operating.nwc0": [
    "derived",
-   "Yahoo Finance fundamentals (quarterly) receivables + inventory \u2212 payables, 2026-06-30; year 1 change = NWC % \u00d7 revenue \u2212 this level"
+   "Yahoo Finance fundamentals (quarterly) receivables + inventory \u2212 payables, 2026-09-30; year 1 change = NWC % \u00d7 revenue \u2212 this level"
   ],
   "operating.interest_net": [
    "sourced",
@@ -4079,11 +4180,11 @@
   ],
   "timing.first_period": [
    "derived",
-   "days from 2026-10-20 to fiscal year end 2027-07-03"
+   "days from 2026-11-05 to fiscal year end 2027-07-03"
   ],
   "timing.stub": [
    "derived",
-   "share of the year after the last balance sheet (2026-06-30)"
+   "share of the year after the last balance sheet (2026-09-30)"
   ],
   "capital.rf": [
    "sourced",
@@ -4119,11 +4220,11 @@
   ],
   "bridge.cash": [
    "sourced",
-   "Yahoo Finance fundamentals (quarterly) CashAndCashEquivalents, 2026-06-30"
+   "Yahoo Finance fundamentals (quarterly) CashAndCashEquivalents, 2026-09-30"
   ],
   "bridge.core_debt": [
    "sourced",
-   "Yahoo Finance fundamentals (quarterly) TotalDebt \u2212 capital leases, 2026-06-30"
+   "Yahoo Finance fundamentals (quarterly) TotalDebt \u2212 capital leases, 2026-09-30"
   ],
   "bridge.leases": [
    "sourced",
@@ -4190,13 +4291,539 @@
     "msg": "Worst annual margin -21.3% is a loss; Bear fades to the 4-year average 10.1% instead"
    },
    {
-    "path": "scenarios.Base.margins.total.0",
-    "msg": "Consensus EPS implies a 77.6% operating margin next year against 61.6% trailing; Base year 1 uses consensus"
-   },
-   {
     "path": "relative.weights",
-    "msg": "Latest quarter annualised is 1.77x trailing revenue; trailing EV/EBITDA and EV/Sales understate the business, so comps use forward P/E only"
+    "msg": "Latest quarter annualised is 1.52x trailing revenue; trailing EV/EBITDA and EV/Sales understate the business, so comps use forward P/E only"
    }
   ]
+ },
+ "sentiment": {
+  "score": -12.107794814259762,
+  "label": "Neutral",
+  "components": {
+   "revisions": {
+    "score": 0.895704161711961,
+    "facts": [
+     "0y EPS 227.80, +6.5% in 30 days",
+     "+1y EPS 287.26, +9.0% in 30 days",
+     "2 analysts revised up and 0 down in 30 days"
+    ],
+    "drift": 0.06298945301802625
+   },
+   "analysts": {
+    "score": -0.5533333333333332,
+    "facts": [
+     "0 upgrades, 1 downgrades; 1 target raises, 5 cuts (30 days)",
+     "mean rating 2.08 (1 = strong buy, 5 = strong sell), 2.08 three months ago",
+     "recent targets average $2,081 against a $842.61 price"
+    ]
+   },
+   "trend": {
+    "score": -0.9600024529021631,
+    "facts": [
+     "price 842.01; 50-day average 1,518.14, 200-day 1,270.69",
+     "1 month -50.2%, 3 months -30.5% (-26.7% against the S&P 500)",
+     "-63.9% from the 52-week high; 14-day RSI 28 (oversold)"
+    ],
+    "levels": {
+     "10-day high": 1404.77001953125,
+     "20-day average": 1289.4884948730469,
+     "50-day average": 1518.1442944335938,
+     "200-day average": 1270.685322418213,
+     "10-day low": 842.010009765625
+    },
+    "rsi": 28.489983176099727
+   },
+   "news": {
+    "score": -0.29411764705882354,
+    "facts": [
+     "30 headlines in 14 days: 6 positive, 11 negative, 13 neutral"
+    ],
+    "headlines": [
+     {
+      "title": "Why Sandisk Stock Keeps Going Down",
+      "publisher": "Motley Fool",
+      "time": 1793892562,
+      "related": [
+       "SNDK",
+       "NVDA"
+      ],
+      "pos": 0,
+      "neg": 0,
+      "tone": 0.0
+     },
+     {
+      "title": "Stock Market Today: Nasdaq Craters 3% As Chips Sell Off; Arm Misses Key Metric (Live Coverage)",
+      "publisher": "Investor's Business Daily",
+      "time": 1793891779,
+      "related": [
+       "ARM",
+       "^IXIC",
+       "^GSPC",
+       "^DJI",
+       "^RUT",
+       "SNDK",
+       "LITE",
+       "AMD",
+       "WDC",
+       "CL=F",
+       "APP",
+       "BROS",
+       "CAVA",
+       "ALAB",
+       "STX"
+      ],
+      "pos": 0,
+      "neg": 3,
+      "tone": -1.0
+     },
+     {
+      "title": "Sandisk Sinks 14%, Micron Down 10% as a Top Phone Chipmaker Blames Weak Sales on \u201cIndustry-Wide Memory Dynamics\u201d",
+      "publisher": "TIKR",
+      "time": 1793891381,
+      "related": [
+       "SNDK",
+       "MU",
+       "STX",
+       "AAPL"
+      ],
+      "pos": 0,
+      "neg": 2,
+      "tone": -1.0
+     },
+     {
+      "title": "Here Are the Stocks Getting Hit Hardest in Today\u2019s Rotation",
+      "publisher": "The Wall Street Journal",
+      "time": 1793890522,
+      "related": [
+       "SNDK",
+       "ALAB",
+       "AMD",
+       "NBIS",
+       "STX"
+      ],
+      "pos": 0,
+      "neg": 0,
+      "tone": 0.0
+     },
+     {
+      "title": "Qualcomm, Micron, Sandisk, and AMD stocks sink, leading chip sector lower",
+      "publisher": "Yahoo Finance",
+      "time": 1793889724,
+      "related": [
+       "^SOX",
+       "QCOM",
+       "MU",
+       "SNDK",
+       "AMD",
+       "ARM"
+      ],
+      "pos": 0,
+      "neg": 2,
+      "tone": -1.0
+     },
+     {
+      "title": "SanDisk Slides 7%, Micron and Western Digital Fall 5% as Lawmaker\u2019s Call for AI Pause Extends Memory Rout",
+      "publisher": "24/7 Wall St.",
+      "time": 1793886427,
+      "related": [
+       "SNDK",
+       "MU",
+       "SKHY",
+       "WDC",
+       "STX",
+       "SKHY"
+      ],
+      "pos": 0,
+      "neg": 4,
+      "tone": -1.0
+     },
+     {
+      "title": "Micron Just Closed Below $800 for the First Time Since July",
+      "publisher": "24/7 Wall St.",
+      "time": 1793880768,
+      "related": [
+       "MU",
+       "^GSPC",
+       "STX",
+       "SNDK",
+       "AAPL",
+       "WDC"
+      ],
+      "pos": 0,
+      "neg": 0,
+      "tone": 0.0
+     },
+     {
+      "title": "Social Buzz: Wallstreetbets Stocks Mixed Pre-Bell Thursday; AppLovin to Advance, Sandisk to Decline",
+      "publisher": "MT Newswires",
+      "time": 1793878772,
+      "related": [
+       "APP",
+       "TSLA",
+       "AAPL",
+       "MSFT",
+       "SNDK",
+       "AMD",
+       "MU",
+       "NVDA"
+      ],
+      "pos": 0,
+      "neg": 1,
+      "tone": -1.0
+     },
+     {
+      "title": "The Wait Is Over: 2 Historic Artificial Intelligence (AI) Stock Splits Were Just Announced",
+      "publisher": "Motley Fool",
+      "time": 1793877962,
+      "related": [
+       "META",
+       "SNDK",
+       "NVDA"
+      ],
+      "pos": 0,
+      "neg": 0,
+      "tone": 0.0
+     },
+     {
+      "title": "Dow, S&P 500, Nasdaq Futures Mixed After A Democratic Sweep In Midterms: NVDA, MU, SNDK, NBIS, IREN In Focus",
+      "publisher": "Stocktwits",
+      "time": 1793847324,
+      "related": [
+       "^IXIC",
+       "^GSPC",
+       "CL=F",
+       "NVDA",
+       "MU",
+       "SNDK",
+       "^DJI"
+      ],
+      "pos": 0,
+      "neg": 0,
+      "tone": 0.0
+     },
+     {
+      "title": "Is the Market Bottoming? 3 Tells to Watch",
+      "publisher": "Zacks",
+      "time": 1793840580,
+      "related": [
+       "QQQ",
+       "^NDX",
+       "^IXIC",
+       "MU",
+       "SNDK",
+       "MRVL",
+       "NBIS"
+      ],
+      "pos": 0,
+      "neg": 0,
+      "tone": 0.0
+     },
+     {
+      "title": "Chip Stocks Take a Hit",
+      "publisher": "The Wall Street Journal",
+      "time": 1793828317,
+      "related": [
+       "NVDA",
+       "AVGO",
+       "AMZN",
+       "MSFT",
+       "MU",
+       "MRVL",
+       "SNDK",
+       "SOX"
+      ],
+      "pos": 0,
+      "neg": 0,
+      "tone": 0.0
+     },
+     {
+      "title": "The Election Flipped Congress. It Also Flipped the Market.",
+      "publisher": "Barrons.com",
+      "time": 1793826255,
+      "related": [
+       "^DJI",
+       "^GSPC",
+       "^IXIC",
+       "CAT",
+       "^SOX",
+       "VST",
+       "NRG",
+       "MU",
+       "SNDK",
+       "LITE",
+       "CIEN",
+       "COHR"
+      ],
+      "pos": 0,
+      "neg": 0,
+      "tone": 0.0
+     },
+     {
+      "title": "5 Cheapest AI Data Center Stocks to Buy According to Billionaires",
+      "publisher": "Insider Monkey",
+      "time": 1793824341,
+      "related": [
+       "CBRE",
+       "NVDA",
+       "MU",
+       "AVGO",
+       "SNDK",
+       "WDC"
+      ],
+      "pos": 1,
+      "neg": 0,
+      "tone": 1.0
+     },
+     {
+      "title": "Sandisk Sinks 8% as Democratic Wave and Memory Price Worries Hit AI Stocks",
+      "publisher": "TIKR",
+      "time": 1793819439,
+      "related": [
+       "SNDK",
+       "^GSPC"
+      ],
+      "pos": 0,
+      "neg": 2,
+      "tone": -1.0
+     },
+     {
+      "title": "Apple\u2019s Pain Could Be Micron\u2019s Gain as Memory Prices Surge",
+      "publisher": "24/7 Wall St.",
+      "time": 1793813594,
+      "related": [
+       "AAPL",
+       "MU",
+       "NVDA",
+       "DELL",
+       "SNDK"
+      ],
+      "pos": 2,
+      "neg": 0,
+      "tone": 1.0
+     },
+     {
+      "title": "Micron Leads Three AI Memory Stocks With Major Upside Potential",
+      "publisher": "GuruFocus.com",
+      "time": 1793813341,
+      "related": [
+       "SMCI",
+       "MU",
+       "AMD",
+       "SNDK",
+       "SKHY"
+      ],
+      "pos": 1,
+      "neg": 0,
+      "tone": 1.0
+     },
+     {
+      "title": "Why Sandisk Stock Sank Today",
+      "publisher": "Motley Fool",
+      "time": 1793813198,
+      "related": [
+       "SNDK",
+       "NVDA"
+      ],
+      "pos": 0,
+      "neg": 1,
+      "tone": -1.0
+     },
+     {
+      "title": "Prediction: This Could Be the Best AI Stock You\u2019re Not Talking About",
+      "publisher": "24/7 Wall St.",
+      "time": 1793808236,
+      "related": [
+       "MU",
+       "SNDK",
+       "WDC"
+      ],
+      "pos": 0,
+      "neg": 0,
+      "tone": 0.0
+     },
+     {
+      "title": "SanDisk Retreats 9%, Micron and Western Digital Fall 7% as Election and Memory Price Worries Weigh",
+      "publisher": "24/7 Wall St.",
+      "time": 1793808179,
+      "related": [
+       "SNDK",
+       "MU",
+       "WDC",
+       "STX",
+       "^NDX"
+      ],
+      "pos": 0,
+      "neg": 2,
+      "tone": -1.0
+     },
+     {
+      "title": "SanDisk Corp. (SNDK): Exiting the Memory Space After Momentum Reversal",
+      "publisher": "Insider Monkey",
+      "time": 1793807467,
+      "related": [
+       "SNDK",
+       "ANTH.PVT",
+       "CL=F"
+      ],
+      "pos": 1,
+      "neg": 0,
+      "tone": 1.0
+     },
+     {
+      "title": "What Did SanDisk's Quarter Change For Its Stock?",
+      "publisher": "Trefis",
+      "time": 1793795082,
+      "related": [
+       "SNDK",
+       "^GSPC",
+       "MU",
+       "STX",
+       "WDC",
+       "NTAP",
+       "HPE",
+       "QTWO"
+      ],
+      "pos": 0,
+      "neg": 0,
+      "tone": 0.0
+     },
+     {
+      "title": "5 Value Stocks to Buy as AI Volatility Reshapes the Market",
+      "publisher": "Zacks",
+      "time": 1793792940,
+      "related": [
+       "SNDK",
+       "HPE",
+       "CL=F",
+       "CVE",
+       "MU",
+       "HMC",
+       "CVE"
+      ],
+      "pos": 1,
+      "neg": 0,
+      "tone": 1.0
+     },
+     {
+      "title": "Western Digital Fell Nearly 8% on a Flash Maker\u2019s Cautious Outlook. Western Digital Sells Hard Drives.",
+      "publisher": "TIKR",
+      "time": 1793787982,
+      "related": [
+       "WDC",
+       "SNDK",
+       "MU"
+      ],
+      "pos": 0,
+      "neg": 1,
+      "tone": -1.0
+     },
+     {
+      "title": "Down 51% From Its High: Is This 84.6% Margin NAND Flash Maker a Bargain?",
+      "publisher": "Investing.com",
+      "time": 1793782803,
+      "related": [
+       "MU",
+       "WDC",
+       "SNDK"
+      ],
+      "pos": 0,
+      "neg": 0,
+      "tone": 0.0
+     },
+     {
+      "title": "Zacks Investment Ideas feature highlights: QQQ, CoreWeave, SanDisk, Marvell, Arm and Micron",
+      "publisher": "Zacks",
+      "time": 1793777520,
+      "related": [
+       "QQQ",
+       "MRVL",
+       "^NDX",
+       "CRWV",
+       "SNDK",
+       "ARM",
+       "MU"
+      ],
+      "pos": 0,
+      "neg": 0,
+      "tone": 0.0
+     },
+     {
+      "title": "5 tech stock stalwarts have tumbled over 50%",
+      "publisher": "TheStreet",
+      "time": 1793764020,
+      "related": [
+       "INTC",
+       "ARM",
+       "ORCL",
+       "SNDK",
+       "KLAC"
+      ],
+      "pos": 0,
+      "neg": 1,
+      "tone": -1.0
+     },
+     {
+      "title": "Q4 QQQ Roadmap: Navigating AI Turbulence & Market Headwinds",
+      "publisher": "Zacks",
+      "time": 1793741160,
+      "related": [
+       "^NDX",
+       "MS",
+       "MU",
+       "SNDK",
+       "ARM",
+       "MRVL",
+       "QQQ",
+       "CRWV"
+      ],
+      "pos": 0,
+      "neg": 1,
+      "tone": -1.0
+     },
+     {
+      "title": "Apple, Palantir, Pfizer, Marvell, AMD, Bloom Energy, Gartner, and More Stocks That Explain Today\u2019s Market",
+      "publisher": "Barrons.com",
+      "time": 1793740560,
+      "related": [
+       "AAPL",
+       "PLTR",
+       "AMD",
+       "SNDK",
+       "PFE",
+       "MRVL",
+       "BE",
+       "FISV",
+       "SMCI"
+      ],
+      "pos": 0,
+      "neg": 0,
+      "tone": 0.0
+     },
+     {
+      "title": "Navitas Soars 8% on onsemi\u2019s 175% AI Data Center Jump Ahead of Its Own Report",
+      "publisher": "TIKR",
+      "time": 1793735420,
+      "related": [
+       "ON",
+       "NVTS",
+       "SNDK",
+       "MPWR",
+       "POWI"
+      ],
+      "pos": 2,
+      "neg": 0,
+      "tone": 1.0
+     }
+    ]
+   },
+   "short": {
+    "score": 0.2532918627328654,
+    "facts": [
+     "3.3% of the float sold short, -16% on the month"
+    ]
+   }
+  },
+  "coverage": 1.0,
+  "lexicon": "built-in headline list"
  }
 }

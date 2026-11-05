@@ -35,17 +35,20 @@ The same functions are available without the app: `from service import value_tic
 
 | | Dell Technologies (DELL) | Sandisk (SNDK) |
 |---|---|---|
-| Valued | 2026-10-16 | 2026-10-20 |
-| Price | $473.39 | $1,365.38 |
-| Fair value | $311.65 | $1,315.59 |
-| Call (±10% band around price) | Overvalued | Fairly valued, low confidence |
-| Bear to Bull DCF | $145.59 – $411.88 | $627.47 – $2,367.26 |
-| WACC / cost of equity | 11.58% / 12.14% | 14.58% / 14.59% |
-| Beta used / daily regression | 1.67 / 1.99 | 2.24 / 2.85 |
-| Comparables | $369.41 | $1,153.35 |
+| Valued | 2026-11-05 (09:46 CT) | 2026-11-05 (09:46 CT), before the 8-for-1 split |
+| Price | $326.48 | $842.61 |
+| Fair value | $278.10 | $1,478.94 |
+| Call (±10% band around price) | Overvalued | Undervalued, low confidence |
+| Bear to Bull DCF | $151.10 – $428.06 | $715.82 – $2,978.08 |
+| WACC / cost of equity | 11.30% / 12.11% | 14.60% / 14.62% |
+| Beta used / daily regression | 1.71 / 2.06 | 2.30 / 2.95 |
+| Comparables | $249.12 | $939.12 |
 | Earnings quality | Grade B | Grade C |
+| Previous valuation | 2026-10-16: $311.65 against $473.39, overvalued | 2026-10-20: $1,315.59 against $1,365.38, fairly valued |
 
-Dell's price sits above every intrinsic estimate, including the Bull case; a daily-return beta near 2 lifts the cost of equity to 12.1%. Sandisk's price falls inside the fair-value band, but the Beneish M-score of −0.71 sits in the manipulation zone and NAND margin swings widen the Bull–Bear range, so the call carries low confidence.
+Dell's price fell 31% after Intel forecast PC units down 12% in 2026 and 10% in 2027 and chip stocks sold off; it now sits inside the DCF range, 15% above fair value against 52% in October. The value moved less: the segment model and consensus are unchanged, peer multiples fell with the sector, and the daily beta rose to 2.06. Today's price needs revenue growth about 2 points a year above consensus, or a 10.5% discount rate instead of 11.3%. Results for the third fiscal quarter come on 24 November.
+
+Sandisk's price fell 38% even as a record fiscal first quarter (revenue $11.0 billion, up 378%, and guidance of $12.2–12.6 billion) lifted consensus earnings: Kioxia said NAND price increases are slowing to flat, and memory stocks sold off after the election. The model's value rose; the price now assumes long-run operating margins near 11%, close to the four-year average, against the model's 41%. The call carries low confidence: the Beneish M-score of −0.72 sits in the manipulation zone and the memory cycle makes the Bull–Bear range wide. The shares split 8-for-1 on 20 November; divide per-share figures by 8 from then.
 
 Fair value blends the DCF, the Monte Carlo median, the comparables and the peer regression (the regression is left out when its R² is below 0.30). Valuations are illustrations built on public data, not investment advice.
 
@@ -75,7 +78,7 @@ python engine/value_ticker.py --snapshot AAPL_yahoo_2026-10-21.json   # rerun on
 
 `value_ticker.py` writes a folder next to `dell/` and `sndk/` with the inputs file, the raw Yahoo snapshot, the interactive page and the Excel workbook. It exits with status 2 when the data leaves a gap the model needs; the files are still written, so the gap can be filled by hand and the page rebuilt.
 
-The Python Monte Carlo uses NumPy's random generator rather than the page's, so its median, and with it the blended fair value, can differ from the page by a fraction of a percent (Dell: $311.10 in Python, $311.65 on the page). The DCF, WACC, comparables and regression match exactly.
+The Python Monte Carlo uses NumPy's random generator rather than the page's, so its median, and with it the blended fair value, can differ from the page by a fraction of a percent (Dell: $278.17 in Python, $278.10 on the page). The DCF, WACC, comparables and regression match exactly.
 
 To rebuild a page from its inputs file:
 
@@ -90,7 +93,7 @@ python engine/web/build_page.py dell/dell_inputs.json dell/index.html
 | `app.py`, `run_app.bat`, `run_app.command`, `requirements.txt` | The Streamlit app and the launchers that set it up and open it |
 | `engine/service.py` | The engine as a plain API for the app: valuing one ticker or many, assumption overrides, macro data and overlays, reverse DCF, sensitivity grids, portfolio totals, exports |
 | `engine/macro.py`, `engine/sentiment.py` | The macro backdrop (data, indicators, recession probability, scenario weights, overlays) and the sentiment score; `engine/data/` holds the 5 November 2026 macro readings for offline use |
-| `dell/`, `sndk/` | Inputs file, interactive page and Excel workbook for each company; Dell's football-field chart; Sandisk's notebook |
+| `dell/`, `sndk/` | Inputs file, interactive page and Excel workbook for each company, valued on 5 November 2026; Dell's football-field chart; Sandisk's notebook and the Yahoo snapshot it runs on |
 | `engine/valuation_v2.py` | The engine: segments, margins, FCFF, WACC, DCF, equity bridge, reverse DCF, sensitivity, Monte Carlo, comparables, verdict |
 | `engine/web/` | The same engine in JavaScript (`model.js`), the research module (`research.js`), the page template and its builder |
 | `engine/research.py`, `engine/fetch_yahoo.py` | Turn Yahoo Finance feeds into an inputs file with provenance tags |

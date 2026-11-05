@@ -11,27 +11,27 @@ sys.path.insert(0, str(ENGINE))
 import run_valuation  # noqa: E402
 import valuation_v2 as v  # noqa: E402
 
-# Base-case figures published on the site (computed by the page's JavaScript engine)
+# Base-case figures published on the site, 5-Nov-2026 (computed by the page's JavaScript engine)
 PAGE = {
     "dell": {
-        "dcf": 284.73015228872623,
-        "bear": 145.5897076500473,
-        "bull": 411.8835552760559,
-        "wacc": 0.11581621085873567,
-        "ke": 0.1214470451705196,
-        "comps": 369.40631186509967,
+        "dcf": 295.69114207282894,
+        "bear": 151.0965705629695,
+        "bull": 428.0552961672145,
+        "wacc": 0.11301519918390183,
+        "ke": 0.12105948836958878,
+        "comps": 249.11734435260684,
         "call": "OVERVALUED",
-        "fair": 311.65,
+        "fair": 278.10,
     },
     "sndk": {
-        "dcf": 1476.017628458122,
-        "bear": 627.4729269294703,
-        "bull": 2367.264769152028,
-        "wacc": 0.14584937103055423,
-        "ke": 0.14593335919016975,
-        "comps": 1153.3493304093302,
-        "call": "FAIRLY VALUED",
-        "fair": 1315.59,
+        "dcf": 1769.2302024429746,
+        "bear": 715.8192219794827,
+        "bull": 2978.083398518934,
+        "wacc": 0.14602440993300494,
+        "ke": 0.14616712353524744,
+        "comps": 939.118280096095,
+        "call": "UNDERVALUED",
+        "fair": 1478.94,
     },
 }
 
