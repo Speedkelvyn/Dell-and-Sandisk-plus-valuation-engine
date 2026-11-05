@@ -166,7 +166,9 @@
       <h1>Dell and Sandisk valuations</h1>
       <p class="lede">
         Two interactive discounted-cash-flow models and the engine behind them. The same engine runs in Excel,
-        Python and the browser. Each model lets you switch Bear, Base and Bull cases and edit any input.
+        Python and the browser, and in an app that values any listed stock from a watchlist or a portfolio,
+        with the live macro backdrop and market sentiment alongside. Each model lets you switch Bear, Base and
+        Bull cases and edit any input.
       </p>
 
       <div class="grid">
@@ -232,7 +234,9 @@
         </li>
         <li>
           <strong>Future cash flows.</strong> Free cash flow to the firm for operating companies, excess
-          returns for banks and insurers, dividends for REITs.
+          returns for banks and insurers, dividends for REITs. Capex starts at what the company spends today
+          and fades to its through-cycle level; a company still building capacity reinvests in line with its
+          growth.
         </li>
         <li>
           <strong>Discount rate.</strong> CAPM cost of equity with beta regressed on two years of daily
@@ -247,7 +251,8 @@
         </li>
         <li>
           <strong>Verdict.</strong> DCF, Monte Carlo, comparables and regression blended into a call and an
-          expected alpha. Calls use a ±10% band around the price.
+          expected alpha. Calls use a ±10% band around the price; a method that values the stock at or below
+          zero is left out and named.
         </li>
       </ol>
       <p>
@@ -255,14 +260,33 @@
         number traces back to a source.
       </p>
 
-      <h2>Value another company</h2>
+      <h2>Value your own stocks</h2>
       <p>
-        The engine builds the same page and workbook for any listed ticker from Yahoo Finance data.
-        <a href="https://github.com/Speedkelvyn/Dell-and-Sandisk-plus-valuation-engine/tree/main/engine"
-          >The code is in <code>engine/</code></a
-        >.
+        The app runs on your own computer. Download the
+        <a href="https://github.com/Speedkelvyn/Dell-and-Sandisk-plus-valuation-engine">repository</a>, then
+        double-click <code>run_app.bat</code> on Windows or <code>run_app.command</code> on a Mac. It has five
+        tabs:
       </p>
-      <pre><code>pip install -r engine/requirements.txt
+      <ul>
+        <li><strong>Watchlist:</strong> many tickers at once, ranked by upside to fair value.</li>
+        <li><strong>Portfolio:</strong> your positions, with market value, fair value and gain or loss.</li>
+        <li>
+          <strong>Value one stock:</strong> every result above for any ticker, with sliders for each
+          assumption and an AI-spending and China stress test.
+        </li>
+        <li>
+          <strong>Macro and market:</strong> rates, the yield curve, credit spreads, the VIX and jobs data
+          from Yahoo Finance and FRED, and a 12-month recession probability that weights the Bear, Base and
+          Bull cases.
+        </li>
+        <li><strong>How it works:</strong> the method in one page.</li>
+      </ul>
+      <p>
+        Sentiment (estimate revisions, analyst actions, the price trend, news tone and short interest) is
+        shown next to each valuation and never changes it. From the command line:
+      </p>
+      <pre><code>pip install -r requirements.txt
+streamlit run app.py
 python engine/value_ticker.py AAPL --peers MSFT GOOGL META</code></pre>
 
       <p class="note">
