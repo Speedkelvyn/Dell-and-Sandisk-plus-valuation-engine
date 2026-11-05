@@ -11,6 +11,7 @@ Valuations are illustrations built on public data, not investment advice.
 
 from __future__ import annotations
 
+import datetime as dt
 import hashlib
 import json
 import math
@@ -53,9 +54,26 @@ def key_of(inp: dict) -> str:
 
 
 @st.cache_data(show_spinner="Valuing…", max_entries=64)
-def run_cached(inputs_key: str, scenario: str, mc: int, overrides_json: str, _inputs: dict) -> S.Valuation:
+def run_cached(
+    inputs_key: str,
+    scenario: str,
+    mc: int,
+    overrides_json: str,
+    macro_key: str,
+    _inputs: dict,
+    _macro: dict | None,
+) -> S.Valuation:
     """The valuation of one inputs file, remembered while the settings stay the same (the inputs are not hashed)."""
-    return S.run(_inputs, scenario, mc, json.loads(overrides_json))
+    return S.run(_inputs, scenario, mc, json.loads(overrides_json), macro=_macro)
+
+
+@st.cache_data(ttl=3600, show_spinner="Getting the macro backdrop…")
+def macro_cached(day: str, refresh_n: int) -> dict:
+    """Today's macro summary (live, else the last saved day, else the bundled example)."""
+    try:
+        return S.get_macro(refresh=refresh_n > 0)
+    except S.MacroError as e:
+        return {"error": str(e)}
 
 
 def ss(name: str, default):
@@ -85,6 +103,23 @@ with st.sidebar:
         value=False,
         help="Today's data is saved the first time you value a ticker. Tick this to download it again.",
     )
+    use_macro = st.checkbox(
+        "Use the macro backdrop",
+        value=True,
+        help="Recession probability sets the weights of a probability-weighted DCF, and the VIX regime widens or "
+        "narrows the Monte Carlo. The fair value itself does not change.",
+    )
+    macro_now = macro_cached(dt.date.today().isoformat(), ss("macro_refresh", 0)) if use_macro else None
+    if macro_now and macro_now.get("error"):
+        st.caption(f"Macro data unavailable: {macro_now['error']}")
+        macro_now = None
+    if macro_now:
+        reg = macro_now["regime"]
+        st.caption(
+            f"Macro: {reg['label'].lower()}, {reg['recession_prob']:.0%} recession probability "
+            f"(data {macro_now.get('as_of')}, {macro_now.get('source')})."
+        )
+    MACRO_KEY = f"{macro_now.get('as_of')}_{macro_now.get('source')}" if macro_now else "none"
     if S.HOSTED:
         st.caption("Shared web copy: your lists are not saved. They last until you close this tab.")
     else:
@@ -96,7 +131,9 @@ st.caption(
     "A discounted-cash-flow, Monte Carlo and comparables valuation for any listed company, with every input traced to a source."
 )
 
-tab_watch, tab_port, tab_one, tab_how = st.tabs(["Watchlist", "Portfolio", "Value one stock", "How it works"])
+tab_watch, tab_port, tab_one, tab_macro, tab_how = st.tabs(
+    ["Watchlist", "Portfolio", "Value one stock", "Macro and market", "How it works"]
+)
 
 vals: dict[str, S.Valuation] = ss("vals", {})
 
@@ -203,6 +240,197 @@ def heatmap(grid: pd.DataFrame, price: float, x_name: str, y_name: str, x_fmt, y
     return (cells + text).properties(height=300, padding={"left": 12, "right": 8, "top": 4, "bottom": 4})
 
 
+# ------------------------------------------------------- macro and sentiment
+COMPONENT_NAMES = {
+    "revisions": "Estimate revisions", "analysts": "Analyst actions", "trend": "Price trend",
+    "news": "News tone", "short": "Short interest",
+}  # fmt: skip
+
+
+def sentiment_panel(val: S.Valuation, key: str) -> None:
+    sent = val.sentiment
+    if sent.get("score") is None:
+        st.info("No sentiment data for this stock.")
+        return
+    c1, c2 = st.columns([1, 3])
+    c1.metric("Sentiment", f"{sent['score']:+.0f}", help="−100 (very negative) to +100 (very positive)")
+    c1.markdown(f"**{sent['label']}**")
+    setup = setup_line(val, sent)
+    if setup:
+        c2.markdown(esc(setup))
+    c2.caption(
+        "Sentiment is kept apart from value: it does not change the fair value. It says whether estimates, analysts, "
+        "the trend and the news are moving with the valuation or against it."
+        + (
+            " Partial reading: this inputs file carries only the analyst mix and recent prices."
+            if sent.get("partial")
+            else ""
+        )
+    )
+    rows = []
+    for k, c in sent["components"].items():
+        if c:
+            rows.append(
+                {
+                    "Component": COMPONENT_NAMES.get(k, k),
+                    "Score": c["score"] * 100,
+                    "What it shows": "; ".join(c["facts"]),
+                }
+            )
+    st.dataframe(
+        pd.DataFrame(rows), hide_index=True, width="stretch",
+        column_config={"Score": st.column_config.NumberColumn(format="%+.0f", help="−100 to +100")},
+    )  # fmt: skip
+    tr = sent["components"].get("trend")
+    if tr and tr.get("levels"):
+        st.markdown("**Levels a recovery has to clear**")
+        lv = pd.DataFrame(
+            [{"Level": k, "Price": x, "vs today": x / val.price - 1} for k, x in tr["levels"].items()]
+        )
+        st.dataframe(
+            lv, hide_index=True, width="stretch",
+            column_config={"Price": st.column_config.NumberColumn(format="$%.2f"), "vs today": st.column_config.NumberColumn(format="percent")},
+        )  # fmt: skip
+        st.caption(
+            "A buy-stop set just above the 10-day high or the 20-day average waits for the price to turn before it fills; "
+            "the 10-day low is where a failed bounce shows. These are reference levels, not recommendations."
+        )
+    nw = sent["components"].get("news")
+    if nw and nw.get("headlines"):
+        with st.expander(f"Headlines scored ({sent.get('lexicon', 'built-in headline list')})"):
+            for h in sorted(nw["headlines"], key=lambda h: -(h.get("time") or 0))[:15]:
+                when = dt.datetime.fromtimestamp(h["time"]).strftime("%b %d") if h.get("time") else ""
+                tone = "🟢" if h["tone"] > 0 else "🔴" if h["tone"] < 0 else "⚪"
+                st.markdown(f"{tone} {esc(h.get('title') or '')} · {esc(h.get('publisher') or '')} {when}")
+
+
+def setup_line(val: S.Valuation, sent: dict) -> str:
+    import sentiment as SE
+
+    return SE.setup(val.verdict.get("call"), val.upside, sent)
+
+
+def macro_panel(val: S.Valuation) -> None:
+    m = val.macro
+    if not m:
+        st.info("Macro backdrop is switched off (sidebar).")
+    else:
+        reg, w = m["regime"], m["weights"]
+        mw, base = val.macro_weighted, val.result["scen3"]["Base"]["perShare"]
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Recession probability (12 months)", f"{reg['recession_prob']:.0%}", help=reg["label"])
+        c2.metric(
+            "Probability-weighted DCF",
+            money(mw),
+            delta=f"{mw / base - 1:+.1%} vs Base" if base > 0 else None,
+            delta_color="off",
+        )
+        c3.metric(
+            "Monte Carlo width",
+            f"{m['vol_scale']:.2f}x",
+            help="VIX against its five-year median; 1.00x is normal",
+        )
+        st.caption(esc(f"{reg['label']}. Bear, Base and Bull weighted {w['Bear']:.0%}, {w['Base']:.0%} and {w['Bull']:.0%} "
+                       f"(25/50/25 at a normal 15% recession probability). Data as of {m.get('as_of')}, {m.get('source')}."))  # fmt: skip
+    st.markdown("**AI spending and China stress test** (Base case, full-strength shocks)")
+    tbl = S.stress_table(val)
+    if len(tbl):
+        show_cols = ["Scenario", "Value per share", "Change ($)"] + (
+            ["Change"] if tbl["Change"].notna().any() else []
+        )
+        st.dataframe(
+            tbl[show_cols], hide_index=True, width="stretch",
+            column_config={"Value per share": st.column_config.NumberColumn(format="$%.2f"), "Change ($)": st.column_config.NumberColumn(format="$%+.2f"),
+                           "Change": st.column_config.NumberColumn(format="percent")},
+        )  # fmt: skip
+        ex = S.MACRO.default_exposure(val.base_inputs or val.inputs)
+        ov = val.overrides or {}
+        st.caption(
+            f"Exposures: {ov.get('ai_exposure', ex['ai']):.0%} of the business tied to AI data-center spending, "
+            f"{ov.get('china_exposure', ex['china']):.0%} exposure to Chinese competition (defaults for {ex['industry']}; "
+            "set your own under Change the assumptions). Full strength: AI growth 20 points a year lower and half the "
+            "long-run margin lost on the exposed share; China growth 5 points lower and 40% of the margin lost. "
+            "'Accelerates' is half-strength in the other direction."
+        )
+
+
+def show_macro(m: dict | None) -> None:
+    if not m:
+        st.info("Switch on the macro backdrop in the sidebar.")
+        return
+    reg, w, ind = m["regime"], m["weights"], m["indicators"]
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Recession probability, 12 months", f"{reg['recession_prob']:.0%}")
+    c2.markdown(
+        f"**Regime**<br><span style='font-size:1.3rem;font-weight:700'>{reg['label']}</span>",
+        unsafe_allow_html=True,
+    )
+    c3.metric(
+        "DCF weights, Bear / Base / Bull",
+        f"{w['Bear'] * 100:.0f}/{w['Base'] * 100:.0f}/{w['Bull'] * 100:.0f}",
+    )
+    c4.metric("Monte Carlo width", f"{m['vol_scale']:.2f}x")
+    st.caption(
+        esc(
+            f"Data as of {m.get('as_of')} ({m.get('source')})."
+            + (f" Live fetch failed: {m['fetch_error']}" if m.get("fetch_error") else "")
+        )
+    )
+    b1, _ = st.columns([1, 5])
+    if b1.button("Refresh macro data"):
+        st.session_state["macro_refresh"] = ss("macro_refresh", 0) + 1
+        st.rerun()
+    st.markdown("**How the probability is built**")
+    for why, x in reg["drivers"]:
+        st.markdown(f"- {esc(why)}" + (f" ({x:+.0%})" if x else ""))
+
+    def show(v):
+        u, x = v["unit"], v["value"]
+        return (f"{x:+.2f} pp" if u == "pp" else f"{x:.2f}%" if u == "pct" else f"{x:.0%}" if u == "prob"
+                else f"{x:+.1%}" if u == "ret" else f"{x:,.0f}" if u == "count" else f"{x:+.2f}" if u == "z" else f"{x:,.2f}")  # fmt: skip
+
+    def chg(v):
+        c, u = v.get("change"), v["unit"]
+        if c is None:
+            return ""
+        return (
+            f"{c:+.2f}" if u in ("pp", "pct", "z") else f"{c:+.1%}" if u in ("ret", "count") else f"{c:+.1f}"
+        )
+
+    order = ["recession_curve", "curve", "sahm", "unemployment", "claims", "hy_spread", "nfci", "vix", "move", "tnx",
+             "irx", "real_yield", "breakeven", "cpi", "consumer", "spx", "ai_trade", "dollar", "oil"]  # fmt: skip
+    rows = [{"Indicator": ind[k]["label"], "Reading": show(ind[k]), "Signal": ind[k]["signal"], "3-month change": chg(ind[k]),
+             "Detail": ind[k]["detail"], "Source": ind[k]["source"]} for k in order if k in ind]  # fmt: skip
+    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+    charts = [
+        ("curve", "Yield curve, 10y − 3m (pp)"),
+        ("hy_spread", "High-yield spread (%)"),
+        ("vix", "VIX"),
+        ("spx", "S&P 500"),
+    ]
+    cols = st.columns(2)
+    for i, (k, title) in enumerate(charts):
+        h = (ind.get(k) or {}).get("history")
+        if not h:
+            continue
+        df = pd.DataFrame(h, columns=["Date", "Value"])
+        df["Date"] = pd.to_datetime(df["Date"])
+        ch = alt.Chart(df).mark_line(strokeWidth=1.5, color=FAIR_COLOR).encode(
+            x=alt.X("Date:T", title=None), y=alt.Y("Value:Q", title=None, scale=alt.Scale(zero=False)),
+            tooltip=[alt.Tooltip("Date:T"), alt.Tooltip("Value:Q", format=",.2f")],
+        ).properties(title=title, height=220)  # fmt: skip
+        if k == "curve":
+            ch = ch + alt.Chart(pd.DataFrame({"y": [0]})).mark_rule(
+                color=PRICE_COLOR, strokeDash=[4, 3]
+            ).encode(y="y:Q")
+        cols[i % 2].altair_chart(ch, width="stretch")
+    st.caption(
+        "What the backdrop changes: the scenario weights of the probability-weighted DCF and the width of the Monte "
+        "Carlo. What it does not: the fair value, which stays the blend of DCF, Monte Carlo, comparables and "
+        "regression. The 10-year yield enters every valuation directly as the risk-free rate."
+    )
+
+
 # ------------------------------------------------------------ the valuation
 def show_valuation(val: S.Valuation, key: str, model_val: S.Valuation | None = None) -> None:
     """Everything about one valuation. model_val is the same stock before the user's assumptions, if they changed any."""
@@ -235,9 +463,14 @@ def show_valuation(val: S.Valuation, key: str, model_val: S.Valuation | None = N
 
     vd = val.verdict
     call = vd.get("call", "")
+    if not val.valued:
+        st.warning(esc(val.note))
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric(
-        "Model fair value", money(val.fair_value), delta=f"{val.upside:+.1%} vs price", delta_color="off"
+        "Model fair value",
+        money(val.fair_value),
+        delta=f"{val.upside:+.1%} vs price" if math.isfinite(val.upside) else None,
+        delta_color="off",
     )
     c2.metric("Price", money(val.price))
     c3.metric("Required return", pct(vd.get("requiredReturn")))
@@ -261,16 +494,21 @@ def show_valuation(val: S.Valuation, key: str, model_val: S.Valuation | None = N
     for line in S.reading(val):
         st.markdown(f"- {esc(line)}")
 
-    t_range, t_cash, t_check, t_priced, t_notes, t_save = st.tabs(
+    t_range, t_cash, t_check, t_priced, t_mood, t_notes, t_save = st.tabs(
         [
             "Value ranges",
             "Cash flows and cases",
             "Simulation and comparables",
             "What the price implies",
+            "Macro and sentiment",
             "Checks and sources",
             "Download",
         ]
     )
+    with t_mood:
+        macro_panel(val)
+        st.divider()
+        sentiment_panel(val, key)
 
     with t_range:
         st.altair_chart(football_chart(val), width="stretch")
@@ -517,7 +755,7 @@ def value_tickers(tickers: list[str]) -> None:
     def progress(i: int, n: int, t: str) -> None:
         bar.progress(i / n if n else 1.0, text=f"Valuing {t} ({i + 1} of {n})" if t else "Done")
 
-    out = S.value_many(tickers, scenario, mc, refresh=refresh, progress=progress)
+    out = S.value_many(tickers, scenario, mc, refresh=refresh, progress=progress, macro=macro_now)
     vals.update(out)
     st.session_state["vals_meta"] = {"scenario": scenario, "mc": mc}
     bar.empty()
@@ -544,7 +782,7 @@ with tab_watch:
         "Try the examples (no internet needed)", help="Loads the published Dell and Sandisk valuations."
     ):
         for name in ("DELL", "SNDK"):
-            vals[name] = S.value_published(name, scenario, mc)
+            vals[name] = S.value_published(name, scenario, mc, macro=macro_now)
         st.session_state["vals_meta"] = {"scenario": scenario, "mc": mc}
 
     shown = {t: v for t, v in vals.items() if not tickers or t in tickers or v.source == "published"}
@@ -571,12 +809,15 @@ with tab_watch:
             "WACC": st.column_config.NumberColumn(format="percent"),
             "Beta": st.column_config.NumberColumn(format="%.2f"),
             "Street target": st.column_config.NumberColumn(format="$%.0f"),
-        }
+            "Macro-weighted DCF": st.column_config.NumberColumn(format="$%.0f", help="Bear, Base and Bull weighted by today's recession probability"),
+            "Sentiment": st.column_config.NumberColumn(format="%+.0f", help="Estimate revisions, analyst actions, trend, news tone and short interest, −100 to +100"),
+        }  # fmt: skip
         st.markdown("**Select a row to open the full valuation.**")
         event = st.dataframe(
             df, hide_index=True, width="stretch", column_config=cfg, on_select="rerun", selection_mode="single-row", key="wl_table",
             column_order=["Ticker", "Name", "Price", "Fair value", "Upside", "Call", "Confidence", "Bear", "Base", "Bull",
-                          "P(value > price)", "Earnings quality", "Street target", "Warnings", "Status", "Note"],
+                          "Macro-weighted DCF", "Sentiment", "Sentiment label", "P(value > price)", "Earnings quality",
+                          "Street target", "Warnings", "Status", "Note"],
         )  # fmt: skip
         d1, d2 = st.columns([2, 5])
         d1.download_button(
@@ -723,7 +964,7 @@ with tab_one:
     single = st.session_state.get("single")
     if single:
         inp, ikey = single["inputs"], single["key"]
-        model_val = run_cached(ikey, scenario, mc, "{}", inp)
+        model_val = run_cached(ikey, scenario, mc, "{}", MACRO_KEY, inp, macro_now)
         model_val.source = single.get("source", "")
         reset_n = ss("reset_n", 0)
         if model_val.error is None and model_val.inputs is not None:
@@ -758,7 +999,7 @@ with tab_one:
                                 sp["hi"],
                                 float(sp["value"]),
                                 sp["step"],
-                                format="%.1fx",
+                                format="%.2fx" if sp["step"] < 0.1 else "%.1fx",
                                 key=k,
                             )
                         else:
@@ -785,7 +1026,7 @@ with tab_one:
                     st.rerun()
         overrides = st.session_state.get("overrides") or {}
         val = (
-            run_cached(ikey, scenario, mc, json.dumps(overrides, sort_keys=True), inp)
+            run_cached(ikey, scenario, mc, json.dumps(overrides, sort_keys=True), MACRO_KEY, inp, macro_now)
             if overrides
             else model_val
         )
@@ -811,6 +1052,11 @@ with tab_one:
         st.info("Pick a source above and open a company.")
 
 
+# ---------------------------------------------------------- macro and market
+with tab_macro:
+    show_macro(macro_now)
+
+
 # ------------------------------------------------------------- how it works
 with tab_how:
     st.markdown(
@@ -825,6 +1071,16 @@ estimates, peers, the Treasury yield and two years of daily prices), tags every 
 4. **Discount.** A ten-year forecast plus a terminal value, cross-checked against an exit multiple.
 5. **Price.** Enterprise value bridged to equity value and divided by diluted shares.
 6. **Verdict.** The DCF, the Monte Carlo median, comparables and a peer regression are blended into a fair value. The call uses a ±10% band around the price.
+
+**Macro backdrop.** Rates, the yield curve, credit spreads, the VIX, jobs and inflation come live from Yahoo Finance and
+FRED. A 12-month recession probability (the New York Fed yield-curve model, adjusted for the Sahm rule, unemployment,
+claims, credit spreads and financial conditions) sets the weights of a probability-weighted DCF next to the fair value,
+and the VIX regime widens or narrows the Monte Carlo. Two stress overlays, AI data-center spending and Chinese
+competition, move growth and margins by the company's exposure.
+
+**Sentiment.** Estimate revisions, analyst actions, the price trend, headline tone and short interest are scored from
+−100 to +100. Sentiment never changes the fair value; it shows whether the market is moving with the valuation or
+against it, and lists the price levels a recovery would have to clear.
 
 **What it will not do.** It will not guess a missing figure: a stock with missing debt, cash or yield data is listed as
 *Needs inputs* with the exact figures to supply. It does not forecast prices, time markets or give investment advice.

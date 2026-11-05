@@ -24,7 +24,7 @@ import research as RP
 
 Q1 = "https://query1.finance.yahoo.com"
 MODULES = "price,summaryDetail,defaultKeyStatistics,financialData,earningsTrend,recommendationTrend,upgradeDowngradeHistory,assetProfile"
-PEER_MODULES = "price,summaryDetail,defaultKeyStatistics,financialData,earningsTrend"
+PEER_MODULES = "price,summaryDetail,defaultKeyStatistics,financialData,earningsTrend,assetProfile"
 
 
 def _session():
@@ -54,8 +54,26 @@ def _chart(yd, t, rng="2y"):
     return j["chart"]["result"][0]
 
 
+def _news(yd, t, n=30):
+    """Recent headlines from Yahoo's search feed: title, publisher, publish time (epoch seconds), related tickers."""
+    try:
+        j = yd.get_raw_json(f"{Q1}/v1/finance/search", params={"q": t, "newsCount": n, "quotesCount": 0})
+    except Exception:
+        return []
+    return [
+        {
+            "title": x.get("title"),
+            "publisher": x.get("publisher"),
+            "time": x.get("providerPublishTime"),
+            "related": x.get("relatedTickers"),
+        }
+        for x in j.get("news") or []
+    ]
+
+
 def fetch(ticker, peers=None, today=None):
     t = ticker.upper()
+    peer_source = "user" if peers else "yahoo"
     yd = _session()
     summary = _summary(yd, t, MODULES)
     if summary is None:
@@ -83,6 +101,8 @@ def fetch(ticker, peers=None, today=None):
         "stock": RP.closes(_chart(yd, t)),
         "index": RP.closes(_chart(yd, "%5EGSPC")),
         "peers": peer_data,
+        "peer_source": peer_source,
+        "news": _news(yd, t),
         "built": f"Yahoo Finance feeds via fetch_yahoo.py, {dt.date.today().isoformat()}",
     }
 
@@ -91,7 +111,20 @@ def save_snapshot(feeds, path):
     """compact-v1 snapshot: research.from_fixture() reads it back, so a valuation can be rerun on the same data."""
     out = {
         k: feeds[k]
-        for k in ("ticker", "today", "tnx", "summary", "annual", "quarterly", "stock", "index", "peers")
+        for k in (
+            "ticker",
+            "today",
+            "tnx",
+            "summary",
+            "annual",
+            "quarterly",
+            "stock",
+            "index",
+            "peers",
+            "peer_source",
+            "news",
+        )
+        if k in feeds
     }
     out["format"] = "compact-v1"
     with open(path, "w", encoding="utf-8") as f:

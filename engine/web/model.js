@@ -214,11 +214,18 @@
     const mp = {};
     for (const g of Object.keys(scen.margins)) mp[g] = marginPath(scen.margins[g][0], scen.margins[g][1]);
     const taxP = marginPath(op.tax0, op.tax_lr);
+    // capex and D&A fade from today's share of sales to a long-run share, like margins (absent: held flat)
+    const capP = marginPath(op.capex_pct, op.capex_lr_pct != null ? op.capex_lr_pct : op.capex_pct);
+    const daP = marginPath(op.da_pct, op.da_lr_pct != null ? op.da_lr_pct : op.da_pct);
+    // build-out companies: net reinvestment = next year's revenue added ÷ sales-to-capital, replacing capex − D&A + ΔNWC
+    const s2c = op.sales_to_capital;
+    const revs = [];
+    for (let i = 0; i < N; i++) revs.push(sum(SEGS.map((s) => seg[s][i])));
     const rows = [];
     let prevRev = inp.rev_y0;
     let shares = dilutedShares(inp);
     for (let i = 0; i < N; i++) {
-      const rev = sum(SEGS.map((s) => seg[s][i]));
+      const rev = revs[i];
       const segRev = {},
         reportRev = {},
         reportOI = {};
@@ -234,10 +241,17 @@
       const ebit = segOIsum - corp;
       const tax = taxP[i];
       const nopat = ebit * (1 - tax);
-      const da = op.da_pct * rev,
-        capex = op.capex_pct * rev;
-      // year 1 against the opening balance when it is known; afterwards NWC % × the change in revenue
-      const dnwc = i === 0 && op.nwc0 != null ? op.nwc_pct * rev - op.nwc0 : op.nwc_pct * (rev - prevRev);
+      const da = daP[i] * rev;
+      let capex, dnwc;
+      if (s2c) {
+        const nxt = i + 1 < N ? revs[i + 1] : rev * (1 + gT);
+        capex = da + Math.max(nxt - rev, 0) / s2c;
+        dnwc = 0;
+      } else {
+        capex = capP[i] * rev;
+        // year 1 against the opening balance when it is known; afterwards NWC % × the change in revenue
+        dnwc = i === 0 && op.nwc0 != null ? op.nwc_pct * rev - op.nwc0 : op.nwc_pct * (rev - prevRev);
+      }
       const fcff = nopat + da - capex - dnwc;
       if (i > 0) shares = shares * (1 - op.buyback_pct);
       const ni = (ebit - op.interest_net) * (1 - tax);
@@ -554,6 +568,12 @@
       case "capex_pct":
         I.operating.capex_pct = x;
         break;
+      case "capex_lr_pct":
+        I.operating.capex_lr_pct = x;
+        break;
+      case "sales_to_capital":
+        I.operating.sales_to_capital = x;
+        break;
       case "erp":
         if (I.capital.rm != null) I.capital.rm = I.capital.rf + x;
         else I.capital.erp = x;
@@ -671,6 +691,12 @@
       ks = keySeg(inp),
       km = keyMargin(inp),
       SEGS = segKeys(inp);
+    // optional inp.monte_carlo: sd_margin shocks every long-run margin, sd_growth replaces the all-segment
+    // growth shock, vol_scale (from the VIX regime) widens or narrows both
+    const mcs = inp.monte_carlo || {},
+      scale = mcs.vol_scale || 1,
+      sdAll = (mcs.sd_growth != null ? mcs.sd_growth : o.sdAllG) * scale,
+      sdM = (mcs.sd_margin || 0) * scale;
     const vals = [];
     for (let k = 0; k < o.n; k++) {
       const I = clone(inp),
@@ -678,11 +704,12 @@
       const dAI = o.sdAI * R.n(),
         dCore = o.sdCore * R.n(),
         dCSG = o.sdCSG * R.n(),
-        dAll = o.sdAllG * R.n();
+        dAll = sdAll * R.n(),
+        dM = sdM ? sdM * R.n() : 0;
       S.growth[ks][0] += dAI;
       for (const s of SEGS) S.growth[s] = S.growth[s].map((v) => v + dAll);
       for (const g of Object.keys(S.margins))
-        S.margins[g][1] += g === km ? dCore : g === ks ? dCore / 2 : dCSG;
+        S.margins[g][1] += (g === km ? dCore : g === ks ? dCore / 2 : dCSG) + dM;
       const w = R.tri(w0 + o.waccLo, w0, w0 + o.waccHi);
       I.terminal.g = R.tri(o.gLo, Math.min(Math.max(inp.terminal.g, o.gLo), o.gHi), o.gHi);
       if (w - I.terminal.g < 0.01) continue;
@@ -1181,9 +1208,18 @@
     else need("capital.erp", "Equity risk premium", (v) => v > 0, "must be above zero");
     need("capital.kd_pretax", "Pre-tax cost of debt", (v) => v >= 0 && v < 0.3, "is outside 0–30%");
     need("capital.tax_marginal", "Marginal tax rate", (v) => v >= 0 && v < 0.6, "is outside 0–60%");
-    if (!fin)
+    if (!fin) {
       for (const k of ["tax0", "tax_lr", "da_pct", "capex_pct", "nwc_pct"])
         need(`operating.${k}`, `Operating input ${k}`);
+      const op = inp.operating || {};
+      if (op.sales_to_capital != null)
+        need("operating.sales_to_capital", "Sales-to-capital", (v) => v > 0, "must be above zero");
+      else if (okNum(op.capex_pct) && op.capex_pct > 1)
+        blocking.push({
+          path: "operating.capex_pct",
+          msg: `Capex is ${op.capex_pct.toFixed(1)}x revenue: a fixed share of sales cannot value a company in a build-out. Set operating.sales_to_capital (revenue added per dollar invested) and a long-run margin`,
+        });
+    }
     need("terminal.g", "Terminal growth", (v) => v < 0.06, "is above 6%, faster than the economy forever");
     const parts = fin ? (mdl === "excess_return" ? ["roe"] : ["dps_growth"]) : ["growth", "margins"];
     for (const [sn, sc] of Object.entries(inp.scenarios))
@@ -1269,17 +1305,24 @@
     return { blocking, warnings, ok: blocking.length === 0 };
   }
 
+  const USABLE_MAX = 20; // a method valuing the stock above 20× its price has failed, not found a bargain
+  function dropMsg(k, x) {
+    if (x == null || !isFinite(x)) return `${k} gave no value and is left out of the blend`;
+    if (x <= 0)
+      return `${k} gave ${x.toFixed(2)} per share: at or below zero, the forecast cash flows do not repay the investment, so it is left out of the blend`;
+    return `${k} gave ${x.toFixed(2)} per share, over ${USABLE_MAX} times the price: a model failure, left out of the blend`;
+  }
+
   function verdict(inp, parts) {
     const Q = checkInputs(inp);
     const w = inp.verdict.weights,
       band = inp.verdict.band,
       p = inp.market.price;
-    const dropped = Object.keys(w).filter((k) => w[k] > 0 && !(parts[k] != null && isFinite(parts[k])));
+    // a per-share value at or below zero, or above 20× the price, is a model failure, never an input to the blend
+    const usable = (x) => x != null && isFinite(x) && x > 0 && x < USABLE_MAX * p;
+    const dropped = Object.keys(w).filter((k) => w[k] > 0 && !usable(parts[k]));
     const warnings = Q.warnings.concat(
-      dropped.map((k) => ({
-        path: `verdict.weights.${k}`,
-        msg: `${k} gave no value and is left out of the blend`,
-      })),
+      dropped.map((k) => ({ path: `verdict.weights.${k}`, msg: dropMsg(k, parts[k]) })),
     );
     if (!Q.ok || dropped.length === Object.keys(w).filter((k) => w[k] > 0).length)
       return {
@@ -1299,7 +1342,7 @@
     let acc = 0,
       ws = 0;
     for (const k of Object.keys(w))
-      if (parts[k] != null && isFinite(parts[k])) {
+      if (w[k] > 0 && usable(parts[k])) {
         acc += w[k] * parts[k];
         ws += w[k];
       }

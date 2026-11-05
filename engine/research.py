@@ -377,6 +377,14 @@ def build(f):
             f"Worst annual margin {fx(m_min * 100, 1)}% is a loss; Bear fades to the {len(hist)}-year average {fx(m_avg * 100, 1)}% instead",
         )
 
+    # Monte Carlo: long-run margins vary by the history's own spread (1–20 points); hypergrowth gets a wider growth shock
+    if len(hist) >= 2:
+        mu = _jsum(hist) / len(hist)
+        sd_hist = math.sqrt(_jsum([(x - mu) ** 2 for x in hist]) / len(hist))
+    else:
+        sd_hist = None
+    mc_settings = {"sd_margin": min(0.20, max(0.01, sd_hist)) if sd_hist is not None else 0.03}
+
     pre, taxp = last(A.get("PretaxIncome")), last(A.get("TaxProvision"))
     eff_raw = taxp / pre if pre is not None and pre > 0 and taxp is not None else None
     eff = min(0.30, max(0.10, eff_raw)) if eff_raw is not None else 0.21
@@ -402,6 +410,45 @@ def build(f):
         if avg3(A.get("CapitalExpenditure"), True) is not None and rev3
         else None
     )
+
+    # reinvestment: today's capex and D&A (last four quarters) fade to through-cycle levels (median of the annual years)
+    def med(xs):
+        xs = sorted(x for x in xs if x is not None)
+        n = len(xs)
+        if not n:
+            return None
+        return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+
+    def ann_pct(k):
+        out = []
+        for d, r in (TR or [])[-5:]:
+            x = find(A.get(k), d)
+            if x and r:
+                out.append(abs(x[1]) / r)
+        return out
+
+    q_capex, q_da = sum_last(Q.get("CapitalExpenditure"), 4), sum_last(Q.get("ReconciledDepreciation"), 4)
+    capex_ttm = abs(q_capex) / ttm_rev if q_capex is not None and ttm_rev else None
+    da_ttm = q_da / ttm_rev if q_da is not None and ttm_rev else None
+    capex_y1, da_y1 = _first(capex_ttm, capex_pct), _first(da_ttm, da_pct)
+    capex_lr = _first(med(ann_pct("CapitalExpenditure")), capex_pct)
+    da_lr = _first(med(ann_pct("ReconciledDepreciation")), da_pct)
+    # a build-out (capex above half of sales) cannot be valued on a fixed capex share: reinvestment follows growth instead
+    build_out = not FIN and capex_y1 is not None and capex_y1 > 0.5
+    s2c = None
+    if build_out:
+        ahead = _first(y2, y1)
+        net = (abs(q_capex) - _z(q_da)) / M_ if q_capex is not None else None
+        s2c_raw = (ahead - ttm_rev / M_) / net if ahead is not None and ttm_rev and net and net > 0 else None
+        s2c = min(2.5, max(0.25, s2c_raw)) if s2c_raw is not None and s2c_raw > 0 else 0.5
+        da_lr = min(da_lr, 0.25) if da_lr is not None else 0.25
+        warn(
+            "operating.sales_to_capital",
+            f"Capex is {fx(capex_y1, 1)}x revenue, a build-out: reinvestment follows growth, each $1 of net capex adding "
+            f"${fx(s2c, 2)} of revenue a year later ({labels[1]} consensus revenue less trailing revenue, ÷ trailing capex net of D&A"
+            + ("" if s2c_raw is not None and s2c_raw > 0 else "; no usable data, 0.50 assumed")
+            + ")",
+        )
     # working capital: latest quarter's balances against that quarter's annualised revenue (a balance reflects the sales running at that date)
     qd = last_date(Q.get("TotalRevenue"))
     q_parts = (
@@ -489,6 +536,13 @@ def build(f):
             }
     ebit_l = last(A.get("OperatingIncome")) / M_ if num(last(A.get("OperatingIncome"))) is not None else None
     cov = ebit_l / int_exp if int_exp > 0 and ebit_l is not None else 99
+    if build_out and cov < 1.5:
+        # a build-out's EBIT is held down by depreciation on capacity still ramping; lenders price it near B, not D
+        warn(
+            "capital.kd_pretax",
+            f"Interest coverage {fx(cov, 1)}x would rate the debt {synthetic(cov)[1]}; for a build-out the rating is floored at B",
+        )
+        cov = 1.5
     _, rating, spread = synthetic(cov)
 
     cash_raw = _first(
@@ -660,8 +714,49 @@ def build(f):
         "div_yield",
         "roe",
     ]
+    # Yahoo's related symbols are stocks viewed together, not an industry screen: keep the subject's sector (or the
+    # peers' majority sector when none shares it), the subject's industry when three or more share it, and sizes
+    # within 25x either way. Peers the user names are kept as given.
+    peers_in, dropped_peers, peer_sector = dict(f.get("peers") or {}), [], None
+    prof_of = lambda ps: (ps or {}).get("assetProfile") or {}
+    if f.get("peer_source") != "user":
+        secs = [prof_of(ps).get("sector") for ps in peers_in.values() if ps and prof_of(ps).get("sector")]
+        subj_sec, subj_ind = prof.get("sector") or "", prof.get("industry") or ""
+        if subj_sec and subj_sec in secs:
+            peer_sector = subj_sec
+        elif secs:
+            peer_sector = secs[0]
+            for x in secs:
+                if secs.count(x) > secs.count(peer_sector):
+                    peer_sector = x
+        if peer_sector:
+            for t in list(peers_in):
+                sec = prof_of(peers_in[t]).get("sector")
+                if peers_in[t] and sec and sec != peer_sector:
+                    dropped_peers.append(f"{t} ({sec})")
+                    del peers_in[t]
+        same_ind = [
+            t for t, ps in peers_in.items() if ps and subj_ind and prof_of(ps).get("industry") == subj_ind
+        ]
+        if len(same_ind) >= 3:
+            for t in list(peers_in):
+                if peers_in[t] and t not in same_ind:
+                    dropped_peers.append(f"{t} ({prof_of(peers_in[t]).get('industry') or 'other industry'})")
+                    del peers_in[t]
+        if mcap:
+            for t in list(peers_in):
+                ppr_ = (peers_in[t] or {}).get("price") or {}
+                pc = raw(ppr_.get("marketCap"))
+                if pc and ppr_.get("currency") == px_ccy and (pc < mcap / 25 or pc > mcap * 25):
+                    dropped_peers.append(f"{t} (size)")
+                    del peers_in[t]
+        if dropped_peers:
+            warn(
+                "peers.core_set",
+                f"Left out of Yahoo's related symbols as not comparable: {', '.join(dropped_peers)}",
+            )
     rows = {}
-    for t, ps in (f.get("peers") or {}).items():
+    for t, ps in peers_in.items():
         if not ps:
             continue
         ppr, psd, pks, pfd = (
@@ -696,7 +791,7 @@ def build(f):
             "peers.core_set",
             f"Only {len(peer_list)} peer{'' if len(peer_list) == 1 else 's'} with data; comps are weak",
         )
-    missing = [t for t, x in (f.get("peers") or {}).items() if not x]
+    missing = [t for t, x in peers_in.items() if not x]
     if missing:
         warn("peers.core_set", f"No data returned for {', '.join(missing)}")
     if not bd:
@@ -712,12 +807,38 @@ def build(f):
             f"using Yahoo's 5-year monthly beta {fx(raw(sd.get('beta')), 2)}, Blume-adjusted. Switch on the BETA tab",
         )
 
+    bull_lr = max(_z(m_ttm), _z(base_lr))
+    if build_out:
+        opms = [
+            raw(((ps or {}).get("financialData") or {}).get("operatingMargins"))
+            for ps in peers_in.values()
+            if ps
+        ]
+        opms = [x for x in opms if x is not None and x > 0]
+        lr_bo = med(opms) if opms else 0.20
+        base_lr, bear_lr, bull_lr = lr_bo, lr_bo - 0.08, lr_bo + 0.07
+        mc_settings["sd_margin"] = 0.05  # the build's history says nothing about the mature margin
+        warn(
+            "scenarios.Base.margins.total.1",
+            f"Build-out: the long-run margin {fx(lr_bo * 100, 1)}% is "
+            + ("the median of the profitable peers" if opms else "an assumption (no profitable peer)")
+            + f"; Bear −8pp, Bull +7pp. The history ({fx(_z(m_avg) * 100, 1)}% average) reflects the build, not the business",
+        )
+    if g_next > 0.5:
+        mc_settings["sd_growth"] = 0.05
+        warn(
+            "scenarios.Base.growth.total.1",
+            f"Consensus growth of {fx(g_next * 100, 0)}% fades faster than the usual path: to 40%, 16% and 6.4% of it (floors 38.5%, 26.5%, 19.5%)",
+        )
+
     def scen(dgv, m_y1, m_lr):
         g = g_next + dgv
-        return {
-            "growth": {"total": [g, g * 0.75 + 0.01, g * 0.5 + 0.015, g * 0.35 + 0.02]},
-            "margins": {"total": [m_y1, m_lr]},
-        }
+        path = (
+            [g, max(0.385, g * 0.4), max(0.265, g * 0.16), max(0.195, g * 0.064)]
+            if g > 0.5
+            else [g, g * 0.75 + 0.01, g * 0.5 + 0.015, g * 0.35 + 0.02]
+        )
+        return {"growth": {"total": path}, "margins": {"total": [m_y1, m_lr]}}
 
     ud = []
     for h in ((S.get("upgradeDowngradeHistory") or {}).get("history") or [])[:8]:
@@ -805,7 +926,7 @@ def build(f):
         else {
             "Bear": scen(-0.05, m1["Bear"], bear_lr),
             "Base": scen(0, m1["Base"], base_lr),
-            "Bull": scen(0.04, m1["Bull"], max(_z(m_ttm), _z(base_lr))),
+            "Bull": scen(0.04, m1["Bull"], bull_lr),
         },
         "fin": {
             "bv0": fc["bv0"],
@@ -825,13 +946,17 @@ def build(f):
             "corp_pct": 0,
             "tax0": eff,
             "tax_lr": max(eff, 0.18),
-            "da_pct": da_pct,
-            "capex_pct": capex_pct,
+            "da_pct": da_y1,
+            "capex_pct": capex_y1,
+            "da_lr_pct": da_lr,
+            "capex_lr_pct": capex_lr,
+            "sales_to_capital": s2c if build_out else _UNDEF,
             "nwc_pct": nwc_pct,
             "nwc0": nwc0,
             "interest_net": int_exp,
             "buyback_pct": buyback,
         },
+        "monte_carlo": mc_settings if not FIN else _UNDEF,
         "terminal": {
             "method": "gordon",
             "g": min(0.03, max(0.01, rf - 0.01)) if rf is not None else 0.025,
@@ -983,7 +1108,12 @@ def build(f):
             if rf is not None
             else "10-year yield missing: enter it and set Rm.",
             "segments": "Single revenue line. Split into reported segments for a sell-side-grade model.",
-            "operating": f"Margins: TTM {fx(_z(m_ttm) * 100, 1)}%, {len(hist)}-year average {fx(_z(m_avg) * 100, 1)}%, low {fx(_z(m_min) * 100, 1)}%. D&A and capex are 3-year averages of sales.",
+            "operating": f"Margins: TTM {fx(_z(m_ttm) * 100, 1)}%, {len(hist)}-year average {fx(_z(m_avg) * 100, 1)}%, low {fx(_z(m_min) * 100, 1)}%. "
+            + (
+                f"Build-out: net reinvestment = next year's added revenue ÷ {fx(s2c, 2)} (sales-to-capital)."
+                if build_out
+                else "D&A and capex start at the last four quarters' share of sales and fade to the median of the annual years by year 5."
+            ),
             "comps": "All multiples come from the same vendor, so definitions match across peers.",
         },
         "sources": {
@@ -993,7 +1123,11 @@ def build(f):
             "Risk-free rate": f"^TNX (10-year Treasury yield) {fx(f['tnx'], 3) + '%' if f.get('tnx') is not None else 'n/a'}, {today}",
             "Equity risk premium": "Damodaran implied ERP, Jan-2026 (assumption, editable)",
             "Cost of debt": f"Synthetic rating {rating} from interest coverage {fx(cov, 1)}x (Damodaran large-firm table)",
-            "Peers": f"Yahoo related symbols: {', '.join(peer_list) or 'none'}",
+            "Peers": (
+                f"Chosen peers: {', '.join(peer_list) or 'none'}"
+                if f.get("peer_source") == "user"
+                else f"Yahoo related symbols{' in ' + peer_sector if peer_sector else ''}: {', '.join(peer_list) or 'none'}"
+            ),
         },
         "provenance": P,
         "data_quality": DQ,
@@ -1059,10 +1193,51 @@ def build(f):
             if s == "Bear"
             else "TTM margin held",
         )
+    if build_out:
+        for sn in ["Bear", "Base", "Bull"]:
+            src(
+                f"scenarios.{sn}.margins.total.1",
+                "assumption",
+                "build-out: median operating margin of the profitable peers (20% when none); Bear −8pp, Bull +7pp",
+            )
     src("operating.tax0", "derived", f"{YT} TaxProvision ÷ PretaxIncome (clamped 10–30%)")
     src("operating.tax_lr", "assumption", "max(effective rate, 18%)")
-    src("operating.da_pct", "derived", f"{YT} D&A ÷ revenue, 3-year average")
-    src("operating.capex_pct", "derived", f"{YT} capex ÷ revenue, 3-year average")
+    src(
+        "operating.da_pct",
+        "derived",
+        f"{YTQ} D&A ÷ revenue, last 4 quarters"
+        if da_ttm is not None
+        else f"{YT} D&A ÷ revenue, 3-year average",
+    )
+    src(
+        "operating.capex_pct",
+        "derived",
+        f"{YTQ} capex ÷ revenue, last 4 quarters"
+        if capex_ttm is not None
+        else f"{YT} capex ÷ revenue, 3-year average",
+    )
+    src(
+        "operating.da_lr_pct",
+        "derived",
+        f"{YT} D&A ÷ revenue, median of the annual years (through-cycle), reached in year 5",
+    )
+    src(
+        "operating.capex_lr_pct",
+        "derived",
+        f"{YT} capex ÷ revenue, median of the annual years (through-cycle), reached in year 5",
+    )
+    if build_out:
+        src(
+            "operating.sales_to_capital",
+            "derived",
+            f"({labels[1]} consensus revenue − trailing 4-quarter revenue) ÷ (trailing capex − trailing D&A), clamped 0.25–2.5",
+        )
+    if not FIN:
+        src(
+            "monte_carlo.sd_margin",
+            "derived",
+            "standard deviation of the annual operating margins, clamped 1–20 points",
+        )
     src(
         "operating.nwc_pct",
         "derived",
@@ -1217,4 +1392,6 @@ def from_fixture(fx_):
         "stock": fx_["stock"] if cp else closes(fx_["stock"]),
         "index": fx_["index"] if cp else closes(fx_["index"]),
         "peers": fx_.get("peers"),
+        "peer_source": fx_.get("peer_source"),
+        "news": fx_.get("news"),
     }

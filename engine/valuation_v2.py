@@ -205,9 +205,15 @@ def project(inp, scen):
         seg[s] = r
     mp = {k: margin_path(*v) for k, v in scen["margins"].items()}
     taxp = margin_path(op["tax0"], op["tax_lr"])
+    # capex and D&A fade from today's share of sales to a long-run share, like margins (absent: held flat)
+    capp = margin_path(op["capex_pct"], op.get("capex_lr_pct", op["capex_pct"]))
+    dap = margin_path(op["da_pct"], op.get("da_lr_pct", op["da_pct"]))
+    # build-out companies: net reinvestment = next year's revenue added ÷ sales-to-capital, replacing capex − D&A + ΔNWC
+    s2c = op.get("sales_to_capital")
+    revs = [sum(seg[s][i] for s in SEGS) for i in range(N)]
     rows, prev, shares = [], inp["rev_y0"], diluted_shares(inp)
     for i in range(N):
-        rev = sum(seg[s][i] for s in SEGS)
+        rev = revs[i]
         report_rev, report_oi, oi_sum = {}, {}, 0.0
         for d in D:
             oi = seg[d["key"]][i] * mp[d["margin"]][i] if d["margin"] else 0.0
@@ -218,13 +224,18 @@ def project(inp, scen):
         ebit = oi_sum - corp
         tax = taxp[i]
         nopat = ebit * (1 - tax)
-        da, capex = op["da_pct"] * rev, op["capex_pct"] * rev
-        # year 1 against the opening balance when it is known; afterwards NWC % × the change in revenue
-        dnwc = (
-            op["nwc_pct"] * rev - op["nwc0"]
-            if i == 0 and op.get("nwc0") is not None
-            else op["nwc_pct"] * (rev - prev)
-        )
+        da = dap[i] * rev
+        if s2c:
+            nxt = revs[i + 1] if i + 1 < N else rev * (1 + gT)
+            capex, dnwc = da + max(nxt - rev, 0.0) / s2c, 0.0
+        else:
+            capex = capp[i] * rev
+            # year 1 against the opening balance when it is known; afterwards NWC % × the change in revenue
+            dnwc = (
+                op["nwc_pct"] * rev - op["nwc0"]
+                if i == 0 and op.get("nwc0") is not None
+                else op["nwc_pct"] * (rev - prev)
+            )
         fcff = nopat + da - capex - dnwc
         if i > 0:
             shares *= 1 - op["buyback_pct"]
@@ -488,6 +499,10 @@ def apply_knob(inp, scen, knob, x):
         trial["operating"]["nwc_pct"] = x
     elif knob == "capex_pct":
         trial["operating"]["capex_pct"] = x
+    elif knob == "capex_lr_pct":
+        trial["operating"]["capex_lr_pct"] = x
+    elif knob == "sales_to_capital":
+        trial["operating"]["sales_to_capital"] = x
     elif knob == "erp":
         if trial["capital"].get("rm") is not None:
             trial["capital"]["rm"] = trial["capital"]["rf"] + x
@@ -561,15 +576,22 @@ def monte_carlo(
     rng = np.random.default_rng(seed)
     w0 = wacc(inp)["wacc"]
     ks, km, SEGS = key_seg(inp), key_margin(inp), seg_keys(inp)
+    # optional inp.monte_carlo: sd_margin shocks every long-run margin, sd_growth replaces the all-segment
+    # growth shock, vol_scale (from the VIX regime) widens or narrows both
+    mcs = inp.get("monte_carlo") or {}
+    scale = mcs.get("vol_scale") or 1.0
+    sd_all = (mcs["sd_growth"] if mcs.get("sd_growth") is not None else sd_allg) * scale
+    sd_m = (mcs.get("sd_margin") or 0) * scale
     vals = []
     for _ in range(n):
         trial, S = copy.deepcopy(inp), copy.deepcopy(scen)
-        d_ai, d_core, d_csg, d_all = rng.normal(0, [sd_ai, sd_core, sd_csg, sd_allg])
+        d_ai, d_core, d_csg, d_all = rng.normal(0, [sd_ai, sd_core, sd_csg, sd_all])
+        d_m = rng.normal(0, sd_m) if sd_m else 0.0
         S["growth"][ks][0] += d_ai
         for s in SEGS:
             S["growth"][s] = [v + d_all for v in S["growth"][s]]
         for g in S["margins"]:
-            S["margins"][g][1] += d_core if g == km else d_core / 2 if g == ks else d_csg
+            S["margins"][g][1] += (d_core if g == km else d_core / 2 if g == ks else d_csg) + d_m
         w = rng.triangular(w0 + wacc_lo, w0, w0 + wacc_hi)
         trial["terminal"]["g"] = rng.triangular(g_lo, min(max(inp["terminal"]["g"], g_lo), g_hi), g_hi)
         if w - trial["terminal"]["g"] < 0.01:
@@ -857,6 +879,18 @@ def check_inputs(inp):
     if not fin:
         for k in ["tax0", "tax_lr", "da_pct", "capex_pct", "nwc_pct"]:
             need(f"operating.{k}", f"Operating input {k}")
+        op = inp.get("operating") or {}
+        if op.get("sales_to_capital") is not None:
+            need("operating.sales_to_capital", "Sales-to-capital", lambda v: v > 0, "must be above zero")
+        elif _ok(op.get("capex_pct")) and op["capex_pct"] > 1:
+            blocking.append(
+                {
+                    "path": "operating.capex_pct",
+                    "msg": f"Capex is {op['capex_pct']:.1f}x revenue: a fixed share of sales cannot value a company "
+                    "in a build-out. Set operating.sales_to_capital (revenue added per dollar invested) and a "
+                    "long-run margin",
+                }
+            )
     need("terminal.g", "Terminal growth", lambda v: v < 0.06, "is above 6%, faster than the economy forever")
     parts = (["roe"] if mdl == "excess_return" else ["dps_growth"]) if fin else ["growth", "margins"]
     for sn, sc in inp["scenarios"].items():
@@ -1152,14 +1186,29 @@ def earnings_quality(inp):
     }
 
 
+USABLE_MAX = 20  # a method valuing the stock above 20× its price has failed, not found a bargain
+
+
+def _drop_msg(k, x):
+    if x is None or not np.isfinite(x):
+        return f"{k} gave no value and is left out of the blend"
+    if x <= 0:
+        return (
+            f"{k} gave {x:.2f} per share: at or below zero, the forecast cash flows do not repay the "
+            "investment, so it is left out of the blend"
+        )
+    return f"{k} gave {x:.2f} per share, over {USABLE_MAX} times the price: a model failure, left out of the blend"
+
+
 def verdict(inp, parts):
     Q = check_inputs(inp)
     w, band, p = inp["verdict"]["weights"], inp["verdict"]["band"], inp["market"]["price"]
     live = [k for k in w if w[k] > 0]
-    dropped = [k for k in live if not (parts.get(k) is not None and np.isfinite(parts[k]))]
+    # a per-share value at or below zero, or above 20× the price, is a model failure, never an input to the blend
+    usable = lambda x: x is not None and np.isfinite(x) and x > 0 and x < USABLE_MAX * p
+    dropped = [k for k in live if not usable(parts.get(k))]
     warnings = Q["warnings"] + [
-        {"path": f"verdict.weights.{k}", "msg": f"{k} gave no value and is left out of the blend"}
-        for k in dropped
+        {"path": f"verdict.weights.{k}", "msg": _drop_msg(k, parts.get(k))} for k in dropped
     ]
     if not Q["ok"] or len(dropped) == len(live):
         nan = float("nan")
@@ -1177,7 +1226,7 @@ def verdict(inp, parts):
             if not Q["ok"]
             else [{"path": "verdict.weights", "msg": "No valuation method produced a value"}],
         }
-    use = {k: v for k, v in parts.items() if k in w and v is not None and np.isfinite(v)}
+    use = {k: v for k, v in parts.items() if k in w and w[k] > 0 and usable(v)}
     # earnings quality gates the call: D withholds it, C marks it low confidence (switch off with verdict.quality_gate = false)
     EQ, gate = earnings_quality(inp), inp["verdict"].get("quality_gate") is not False
     if EQ["grade"] in ("C", "D"):

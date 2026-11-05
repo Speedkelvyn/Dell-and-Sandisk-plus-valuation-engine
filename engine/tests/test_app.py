@@ -15,6 +15,12 @@ import service  # noqa: E402
 TIMEOUT = 180
 
 
+@pytest.fixture(autouse=True)
+def offline_macro(monkeypatch):
+    """The bundled macro readings instead of the network."""
+    monkeypatch.setattr(service, "get_macro", lambda **kw: service.example_macro())
+
+
 @pytest.fixture
 def app(tmp_path, monkeypatch):
     """A fresh app whose lists are saved in a temporary folder, with a fast simulation."""
@@ -35,9 +41,18 @@ def metrics(at):
     return {m.label: m.value for m in at.metric}
 
 
-def test_loads_with_four_tabs(app):
+def test_loads_with_five_tabs(app):
     assert not app.exception
-    assert [t.label for t in app.tabs][:4] == ["Watchlist", "Portfolio", "Value one stock", "How it works"]
+    assert [t.label for t in app.tabs][:5] == [
+        "Watchlist", "Portfolio", "Value one stock", "Macro and market", "How it works",
+    ]  # fmt: skip
+
+
+def test_macro_tab_shows_the_regime(app):
+    m = metrics(app)
+    assert "Recession probability, 12 months" in m
+    assert m["Recession probability, 12 months"].endswith("%")
+    assert any("Macro:" in c.value for c in app.sidebar.caption)
     assert app.title[0].value == "Stock valuation engine"
 
 
@@ -72,6 +87,18 @@ def test_one_stock_example_then_change_an_assumption(app):
     button(app, "Re-value with these assumptions").click().run()
     assert not app.exception
     assert metrics(app) != before
+
+
+def test_one_stock_shows_macro_and_sentiment(app):
+    source = next(r for r in app.radio if r.label == "Where does the data come from?")
+    source.set_value("An example (Dell or Sandisk)").run()
+    button(app, "Open example").click().run()
+    assert not app.exception
+    labels = [t.label for t in app.tabs]
+    assert "Macro and sentiment" in labels
+    m = metrics(app)
+    assert "Probability-weighted DCF" in m and m["Probability-weighted DCF"].startswith("$")
+    assert "Sentiment" in m
 
 
 def test_portfolio_totals_from_saved_holdings(tmp_path, monkeypatch):

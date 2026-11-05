@@ -14,7 +14,7 @@
       return `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(t)}?modules=${this.modules}&crumb=${encodeURIComponent(crumb)}`;
     },
     peerSummary(t, crumb) {
-      return `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(t)}?modules=price,summaryDetail,defaultKeyStatistics,financialData,earningsTrend&crumb=${encodeURIComponent(crumb)}`;
+      return `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(t)}?modules=price,summaryDetail,defaultKeyStatistics,financialData,earningsTrend,assetProfile&crumb=${encodeURIComponent(crumb)}`;
     },
     TYPES: [
       "TotalRevenue",
@@ -271,14 +271,22 @@
       .filter((x) => x != null);
     const mAvg = hist.length ? hist.reduce((a, b) => a + b, 0) / hist.length : mTTM;
     const mMin = hist.length ? Math.min(...hist) : mTTM != null ? mTTM * 0.8 : null;
-    const baseLR = mTTM != null && mAvg != null ? (mTTM + mAvg) / 2 : null;
+    let baseLR = mTTM != null && mAvg != null ? (mTTM + mAvg) / 2 : null;
     // a perpetual loss values a going concern below zero; when the worst year is a loss, Bear fades to the through-cycle average instead
-    const bearLR = mMin != null && mMin <= 0 && mAvg != null && mAvg > 0 ? mAvg : mMin;
+    let bearLR = mMin != null && mMin <= 0 && mAvg != null && mAvg > 0 ? mAvg : mMin;
     if (bearLR !== mMin)
       warn(
         "scenarios.Bear.margins.total.1",
         `Worst annual margin ${(mMin * 100).toFixed(1)}% is a loss; Bear fades to the ${hist.length}-year average ${(mAvg * 100).toFixed(1)}% instead`,
       );
+
+    // Monte Carlo: long-run margins vary by the history's own spread (1–20 points); hypergrowth gets a wider growth shock
+    let sdHist = null;
+    if (hist.length >= 2) {
+      const mu = hist.reduce((a, b) => a + b, 0) / hist.length;
+      sdHist = Math.sqrt(hist.map((x) => (x - mu) ** 2).reduce((a, b) => a + b, 0) / hist.length);
+    }
+    const mcSettings = { sd_margin: sdHist != null ? Math.min(0.2, Math.max(0.01, sdHist)) : 0.03 };
 
     const pre = last(A.PretaxIncome),
       taxp = last(A.TaxProvision);
@@ -300,6 +308,47 @@
       avg3(A.ReconciledDepreciation) != null && rev3 ? avg3(A.ReconciledDepreciation) / rev3 : null;
     const capexPct =
       avg3(A.CapitalExpenditure, true) != null && rev3 ? avg3(A.CapitalExpenditure, true) / rev3 : null;
+
+    // reinvestment: today's capex and D&A (last four quarters) fade to through-cycle levels (median of the annual years)
+    const med = (xs) => {
+      const v = xs.filter((x) => x != null).sort((a, b) => a - b),
+        n = v.length;
+      if (!n) return null;
+      return n % 2 ? v[Math.floor(n / 2)] : (v[n / 2 - 1] + v[n / 2]) / 2;
+    };
+    const annPct = (k) => {
+      const out = [];
+      for (const [d, r] of (A.TotalRevenue || []).slice(-5)) {
+        const x = (A[k] || []).find((e) => e[0] === d);
+        if (x && r) out.push(Math.abs(x[1]) / r);
+      }
+      return out;
+    };
+    const qCapex = sumLast(Q.CapitalExpenditure, 4),
+      qDa = sumLast(Q.ReconciledDepreciation, 4);
+    const capexTTM = qCapex != null && ttmRev ? Math.abs(qCapex) / ttmRev : null;
+    const daTTM = qDa != null && ttmRev ? qDa / ttmRev : null;
+    const capexY1 = capexTTM ?? capexPct,
+      daY1 = daTTM ?? daPct;
+    const capexLR = med(annPct("CapitalExpenditure")) ?? capexPct;
+    let daLR = med(annPct("ReconciledDepreciation")) ?? daPct;
+    // a build-out (capex above half of sales) cannot be valued on a fixed capex share: reinvestment follows growth instead
+    const buildOut = !FIN && capexY1 != null && capexY1 > 0.5;
+    let s2c = null;
+    if (buildOut) {
+      const ahead = y2 ?? y1;
+      const net = qCapex != null ? (Math.abs(qCapex) - (qDa || 0)) / M_ : null;
+      const s2cRaw = ahead != null && ttmRev && net && net > 0 ? (ahead - ttmRev / M_) / net : null;
+      s2c = s2cRaw != null && s2cRaw > 0 ? Math.min(2.5, Math.max(0.25, s2cRaw)) : 0.5;
+      daLR = daLR != null ? Math.min(daLR, 0.25) : 0.25;
+      warn(
+        "operating.sales_to_capital",
+        `Capex is ${capexY1.toFixed(1)}x revenue, a build-out: reinvestment follows growth, each $1 of net capex adding ` +
+          `$${s2c.toFixed(2)} of revenue a year later (${labels[1]} consensus revenue less trailing revenue, ÷ trailing capex net of D&A` +
+          (s2cRaw != null && s2cRaw > 0 ? "" : "; no usable data, 0.50 assumed") +
+          ")",
+      );
+    }
     // working capital: latest quarter's balances against that quarter's annualised revenue (a balance reflects the sales running at that date)
     const qd = lastDate(Q.TotalRevenue);
     const qParts = qd
@@ -388,7 +437,15 @@
       }
     }
     const ebitL = num(last(A.OperatingIncome)) != null ? last(A.OperatingIncome) / M_ : null;
-    const cov = intExp > 0 && ebitL != null ? ebitL / intExp : 99;
+    let cov = intExp > 0 && ebitL != null ? ebitL / intExp : 99;
+    if (buildOut && cov < 1.5) {
+      // a build-out's EBIT is held down by depreciation on capacity still ramping; lenders price it near B, not D
+      warn(
+        "capital.kd_pretax",
+        `Interest coverage ${cov.toFixed(1)}x would rate the debt ${synthetic(cov)[1]}; for a build-out the rating is floored at B`,
+      );
+      cov = 1.5;
+    }
     const [, rating, spread] = synthetic(cov);
 
     // debt and cash never default to zero: a missing figure blocks the call until it is entered
@@ -555,8 +612,59 @@
       "div_yield",
       "roe",
     ];
+    // Yahoo's related symbols are stocks viewed together, not an industry screen: keep the subject's sector (or the
+    // peers' majority sector when none shares it), the subject's industry when three or more share it, and sizes
+    // within 25x either way. Peers the user names are kept as given.
+    const peersIn = Object.assign({}, f.peers || {}),
+      droppedPeers = [];
+    let peerSector = null;
+    const profOf = (ps) => (ps && ps.assetProfile) || {};
+    if (f.peer_source !== "user") {
+      const secs = Object.values(peersIn)
+        .filter((ps) => ps && profOf(ps).sector)
+        .map((ps) => profOf(ps).sector);
+      const subjSec = prof.sector || "",
+        subjInd = prof.industry || "";
+      const count = (x) => secs.filter((y) => y === x).length;
+      if (subjSec && secs.includes(subjSec)) peerSector = subjSec;
+      else if (secs.length) {
+        peerSector = secs[0];
+        for (const x of secs) if (count(x) > count(peerSector)) peerSector = x;
+      }
+      if (peerSector)
+        for (const t of Object.keys(peersIn)) {
+          const sec = profOf(peersIn[t]).sector;
+          if (peersIn[t] && sec && sec !== peerSector) {
+            droppedPeers.push(`${t} (${sec})`);
+            delete peersIn[t];
+          }
+        }
+      const sameInd = Object.entries(peersIn)
+        .filter(([, ps]) => ps && subjInd && profOf(ps).industry === subjInd)
+        .map(([t]) => t);
+      if (sameInd.length >= 3)
+        for (const t of Object.keys(peersIn))
+          if (peersIn[t] && !sameInd.includes(t)) {
+            droppedPeers.push(`${t} (${profOf(peersIn[t]).industry || "other industry"})`);
+            delete peersIn[t];
+          }
+      if (mcap)
+        for (const t of Object.keys(peersIn)) {
+          const ppr_ = (peersIn[t] && peersIn[t].price) || {};
+          const pc = raw(ppr_.marketCap);
+          if (pc && ppr_.currency === pxCcy && (pc < mcap / 25 || pc > mcap * 25)) {
+            droppedPeers.push(`${t} (size)`);
+            delete peersIn[t];
+          }
+        }
+      if (droppedPeers.length)
+        warn(
+          "peers.core_set",
+          `Left out of Yahoo's related symbols as not comparable: ${droppedPeers.join(", ")}`,
+        );
+    }
     const rows = {};
-    for (const [t, ps] of Object.entries(f.peers || {})) {
+    for (const [t, ps] of Object.entries(peersIn)) {
       if (!ps) continue;
       const ppr = ps.price || {},
         psd = ps.summaryDetail || {},
@@ -586,7 +694,7 @@
         "peers.core_set",
         `Only ${peerList.length} peer${peerList.length === 1 ? "" : "s"} with data; comps are weak`,
       );
-    const missingPeers = Object.entries(f.peers || {})
+    const missingPeers = Object.entries(peersIn)
       .filter(([, v]) => !v)
       .map(([t]) => t);
     if (missingPeers.length) warn("peers.core_set", `No data returned for ${missingPeers.join(", ")}`);
@@ -603,17 +711,39 @@
         `Daily regression beta ${bd.beta.toFixed(2)} explains only ${(bd.r2 * 100).toFixed(1)}% of the stock's moves (R²); using Yahoo's 5-year monthly beta ${raw(sd.beta).toFixed(2)}, Blume-adjusted. Switch on the BETA tab`,
       );
 
-    const scen = (dg, mY1, mLR) => ({
-      growth: {
-        total: [
-          gNext + dg,
-          (gNext + dg) * 0.75 + 0.01,
-          (gNext + dg) * 0.5 + 0.015,
-          (gNext + dg) * 0.35 + 0.02,
-        ],
-      },
-      margins: { total: [mY1, mLR] },
-    });
+    let bullLR = Math.max(mTTM, baseLR);
+    if (buildOut) {
+      const opms = Object.values(peersIn)
+        .filter((ps) => ps)
+        .map((ps) => raw((ps.financialData || {}).operatingMargins))
+        .filter((x) => x != null && x > 0);
+      const lrBo = opms.length ? med(opms) : 0.2;
+      baseLR = lrBo;
+      bearLR = lrBo - 0.08;
+      bullLR = lrBo + 0.07;
+      mcSettings.sd_margin = 0.05; // the build's history says nothing about the mature margin
+      warn(
+        "scenarios.Base.margins.total.1",
+        `Build-out: the long-run margin ${(lrBo * 100).toFixed(1)}% is ` +
+          (opms.length ? "the median of the profitable peers" : "an assumption (no profitable peer)") +
+          `; Bear −8pp, Bull +7pp. The history (${(mAvg * 100).toFixed(1)}% average) reflects the build, not the business`,
+      );
+    }
+    if (gNext > 0.5) {
+      mcSettings.sd_growth = 0.05;
+      warn(
+        "scenarios.Base.growth.total.1",
+        `Consensus growth of ${(gNext * 100).toFixed(0)}% fades faster than the usual path: to 40%, 16% and 6.4% of it (floors 38.5%, 26.5%, 19.5%)`,
+      );
+    }
+    const scen = (dg, mY1, mLR) => {
+      const g = gNext + dg;
+      const path =
+        g > 0.5
+          ? [g, Math.max(0.385, g * 0.4), Math.max(0.265, g * 0.16), Math.max(0.195, g * 0.064)]
+          : [g, g * 0.75 + 0.01, g * 0.5 + 0.015, g * 0.35 + 0.02];
+      return { growth: { total: path }, margins: { total: [mY1, mLR] } };
+    };
     const ud = ((S.upgradeDowngradeHistory && S.upgradeDowngradeHistory.history) || [])
       .slice(0, 8)
       .map((h) => [
@@ -684,7 +814,7 @@
         : {
             Bear: scen(-0.05, m1.Bear, bearLR),
             Base: scen(0, m1.Base, baseLR),
-            Bull: scen(0.04, m1.Bull, Math.max(mTTM, baseLR)),
+            Bull: scen(0.04, m1.Bull, bullLR),
           },
       fin: FIN
         ? {
@@ -704,13 +834,17 @@
         corp_pct: 0,
         tax0: eff,
         tax_lr: Math.max(eff, 0.18),
-        da_pct: daPct,
-        capex_pct: capexPct,
+        da_pct: daY1,
+        capex_pct: capexY1,
+        da_lr_pct: daLR,
+        capex_lr_pct: capexLR,
+        ...(buildOut ? { sales_to_capital: s2c } : {}),
         nwc_pct: nwcPct,
         nwc0,
         interest_net: intExp,
         buyback_pct: buyback,
       },
+      monte_carlo: FIN ? undefined : mcSettings,
       terminal: {
         method: "gordon",
         g: rf != null ? Math.min(0.03, Math.max(0.01, rf - 0.01)) : 0.025,
@@ -873,7 +1007,11 @@
             ? `Rm = 10Y yield + ERP (${(rf * 100).toFixed(2)}% + ${(erp * 100).toFixed(2)}%). Replace with your own expected S&P 500 return.`
             : "10-year yield missing: enter it and set Rm.",
         segments: "Single revenue line. Split into reported segments for a sell-side-grade model.",
-        operating: `Margins: TTM ${(mTTM * 100).toFixed(1)}%, ${hist.length}-year average ${(mAvg * 100).toFixed(1)}%, low ${(mMin * 100).toFixed(1)}%. D&A and capex are 3-year averages of sales.`,
+        operating: `Margins: TTM ${(mTTM * 100).toFixed(1)}%, ${hist.length}-year average ${(mAvg * 100).toFixed(1)}%, low ${(mMin * 100).toFixed(1)}%. ${
+          buildOut
+            ? `Build-out: net reinvestment = next year's added revenue ÷ ${s2c.toFixed(2)} (sales-to-capital).`
+            : "D&A and capex start at the last four quarters' share of sales and fade to the median of the annual years by year 5."
+        }`,
         comps: "All multiples come from the same vendor, so definitions match across peers.",
       },
       sources: {
@@ -883,7 +1021,10 @@
         "Risk-free rate": `^TNX (10-year Treasury yield) ${f.tnx != null ? f.tnx.toFixed(3) + "%" : "n/a"}, ${today}`,
         "Equity risk premium": "Damodaran implied ERP, Jan-2026 (assumption, editable)",
         "Cost of debt": `Synthetic rating ${rating} from interest coverage ${cov.toFixed(1)}x (Damodaran large-firm table)`,
-        Peers: `Yahoo related symbols: ${peerList.join(", ") || "none"}`,
+        Peers:
+          f.peer_source === "user"
+            ? `Chosen peers: ${peerList.join(", ") || "none"}`
+            : `Yahoo related symbols${peerSector ? " in " + peerSector : ""}: ${peerList.join(", ") || "none"}`,
       },
       provenance: P,
       data_quality: DQ,
@@ -948,10 +1089,47 @@
             : "TTM margin held",
       );
     }
+    if (buildOut)
+      for (const sn of ["Bear", "Base", "Bull"])
+        src(
+          `scenarios.${sn}.margins.total.1`,
+          "assumption",
+          "build-out: median operating margin of the profitable peers (20% when none); Bear −8pp, Bull +7pp",
+        );
     src("operating.tax0", "derived", `${YT} TaxProvision ÷ PretaxIncome (clamped 10–30%)`);
     src("operating.tax_lr", "assumption", "max(effective rate, 18%)");
-    src("operating.da_pct", "derived", `${YT} D&A ÷ revenue, 3-year average`);
-    src("operating.capex_pct", "derived", `${YT} capex ÷ revenue, 3-year average`);
+    src(
+      "operating.da_pct",
+      "derived",
+      daTTM != null ? `${YTQ} D&A ÷ revenue, last 4 quarters` : `${YT} D&A ÷ revenue, 3-year average`,
+    );
+    src(
+      "operating.capex_pct",
+      "derived",
+      capexTTM != null ? `${YTQ} capex ÷ revenue, last 4 quarters` : `${YT} capex ÷ revenue, 3-year average`,
+    );
+    src(
+      "operating.da_lr_pct",
+      "derived",
+      `${YT} D&A ÷ revenue, median of the annual years (through-cycle), reached in year 5`,
+    );
+    src(
+      "operating.capex_lr_pct",
+      "derived",
+      `${YT} capex ÷ revenue, median of the annual years (through-cycle), reached in year 5`,
+    );
+    if (buildOut)
+      src(
+        "operating.sales_to_capital",
+        "derived",
+        `(${labels[1]} consensus revenue − trailing 4-quarter revenue) ÷ (trailing capex − trailing D&A), clamped 0.25–2.5`,
+      );
+    if (!FIN)
+      src(
+        "monte_carlo.sd_margin",
+        "derived",
+        "standard deviation of the annual operating margins, clamped 1–20 points",
+      );
     src(
       "operating.nwc_pct",
       "derived",
