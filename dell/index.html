@@ -3244,7 +3244,7 @@
         $("main").innerHTML = (R.checks ? dqStrip(R.ver.warnings) : "") + RD(R);
         if (RD.after) RD.after(R);
         $("foot").innerHTML =
-          `${S.inp.meta.name} · ${S.inp.meta.units} · Prices ${S.inp.meta.price_date} close · Fundamentals to ${S.inp.meta.balance_sheet_date} · Not investment advice.`;
+          `${S.inp.meta.name} · ${S.inp.meta.units} · Prices ${S.inp.meta.price_date} close · Fundamentals to ${S.inp.meta.balance_sheet_date} · Educational research, not investment advice.${S.inp.meta.footnote ? " " + S.inp.meta.footnote : ""}`;
       }
 
       function go(tab) {

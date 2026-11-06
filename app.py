@@ -6,7 +6,7 @@ Four tabs: a watchlist that values many tickers at once, a portfolio view for yo
 one stock in full and lets you change any assumption, and a short note on how the valuation works.
 Everything runs on your own computer; your lists are saved in the my_data folder next to this file.
 
-Valuations are illustrations built on public data, not investment advice.
+Valuations are model outputs built on public data. Educational research, not investment advice.
 """
 
 from __future__ import annotations
@@ -124,7 +124,7 @@ with st.sidebar:
         st.caption("Shared web copy: your lists are not saved. They last until you close this tab.")
     else:
         st.caption(f"Your lists are saved in `{S.DATA_DIR}` on this computer.")
-    st.caption("For illustration only, not investment advice.")
+    st.caption("Educational research, not investment advice.")
 
 st.title("Stock valuation engine")
 st.caption(

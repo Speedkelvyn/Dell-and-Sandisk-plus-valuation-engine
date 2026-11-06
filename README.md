@@ -4,6 +4,8 @@ A valuation engine for your own stocks. Type tickers, get a fair value for each,
 
 **Open the Dell and Sandisk models:** https://speedkelvyn.github.io/Dell-and-Sandisk-plus-valuation-engine/
 
+> Educational research, not investment advice. Every value here is a model output built on public data, can be wrong, and is not a recommendation to buy or sell any security.
+
 ## Use the app
 
 Windows: double-click `run_app.bat`. Mac or Linux: double-click `run_app.command` (or run `./run_app.command`). The first run sets up its own environment, which takes about a minute, and then opens the app in your browser. Python 3.10 or newer is required. Manual route:

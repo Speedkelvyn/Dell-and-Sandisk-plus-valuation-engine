@@ -24,7 +24,8 @@
   ],
   "sector": "Technology",
   "industry": "Computer Hardware",
-  "built": "Yahoo Finance feeds, 5-Nov-2026 09:46 CT (snapshot sndk/SNDK_yahoo_2026-11-05.json); peers chosen: memory and storage makers"
+  "built": "Yahoo Finance feeds, 5-Nov-2026 09:46 CT (snapshot sndk/SNDK_yahoo_2026-11-05.json); peers chosen: memory and storage makers",
+  "footnote": "Prices are before the 8-for-1 split that takes effect on 20 November 2026; divide per-share figures by 8 from then."
  },
  "market": {
   "price": 842.61,
