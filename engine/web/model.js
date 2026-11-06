@@ -669,12 +669,18 @@
     return { u, n, tri };
   }
 
-  // Stretch simulated values about their median in log space (see MC_WIDEN in valuation_v2.py)
-  const MC_WIDEN = 2.1;
-  function widenDraws(vals, k) {
+  // Scale simulated values about their median in log space so the spread is sqrt(own^2 + err^2) (see MC_MODEL_ERR in
+  // valuation_v2.py). vals must be sorted ascending. Returns [values, k].
+  const MC_MODEL_ERR = 0.5;
+  const Z90 = 1.2815515655446004;
+  function widenDraws(vals, err) {
     const med = quantile(vals, 0.5);
-    if (!(med > 0) || k === 1) return vals;
-    return vals.map((v) => (v > 0 ? med * (v / med) ** k : v));
+    const pos = vals.filter((v) => v > 0);
+    if (!(med > 0) || !err || pos.length < 20) return [vals, 1];
+    const s = Math.log(quantile(pos, 0.9) / quantile(pos, 0.1)) / (2 * Z90);
+    if (!(s > 1e-9)) return [vals, 1];
+    const k = Math.sqrt(1 + (err / s) ** 2);
+    return [vals.map((v) => (v > 0 ? med * (v / med) ** k : v)), k];
   }
 
   function monteCarlo(inp, scen, opts) {
@@ -724,8 +730,8 @@
       vals.push(dcf(I, S, { wacc: w }).perShare);
     }
     vals.sort((a, b) => a - b);
-    const wk = (inp.monte_carlo && inp.monte_carlo.widen) ?? MC_WIDEN;
-    vals = widenDraws(vals, wk);
+    let wk;
+    [vals, wk] = widenDraws(vals, (inp.monte_carlo && inp.monte_carlo.model_error) ?? MC_MODEL_ERR);
     const p = inp.market.price;
     return {
       widen: wk,
@@ -778,8 +784,8 @@
       vals.push(finValue(I, S, { wacc: r }).perShare);
     }
     vals.sort((x, y) => x - y);
-    const wk = (inp.monte_carlo && inp.monte_carlo.widen) ?? MC_WIDEN;
-    vals = widenDraws(vals, wk);
+    let wk;
+    [vals, wk] = widenDraws(vals, (inp.monte_carlo && inp.monte_carlo.model_error) ?? MC_MODEL_ERR);
     const p = inp.market.price;
     return {
       widen: wk,
@@ -1461,6 +1467,7 @@
     sensitivity,
     tornado,
     monteCarlo,
+    widenDraws,
     relative,
     regression,
     checkInputs,

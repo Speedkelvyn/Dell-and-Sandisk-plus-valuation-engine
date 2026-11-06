@@ -550,8 +550,8 @@ def show_valuation(val: S.Valuation, key: str, model_val: S.Valuation | None = N
         with a:
             st.markdown("**Monte Carlo: value per share across the draws**")
             st.caption(
-                "The range is stretched about the median (2.1x in log terms) so that the 10th to 90th percentile band "
-                "matches how often prices landed inside it in the backtest. The median and the call do not change."
+                "A model-error term (0.5 in log terms, added to the simulated spread) widens the range so that the 10th to 90th "
+                "percentile band matches how often prices landed inside it in the backtest. The median and the call do not change."
             )
             st.altair_chart(mc_chart(val), width="stretch")
         with b:

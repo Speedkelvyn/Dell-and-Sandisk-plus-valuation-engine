@@ -160,24 +160,44 @@ def test_python_and_javascript_agree_on_financials(t, built):
         assert v.fin_value(py, py["scenarios"][k])["perShare"] == pytest.approx(x, rel=1e-12)
 
 
-def test_monte_carlo_widening_keeps_the_median_and_stretches_the_band(built):
+def test_monte_carlo_model_error_keeps_the_median_and_adds_spread_in_quadrature(built):
     import numpy as np
 
     inp = built["JPM"]
-    wide = v.monte_carlo(inp, inp["scenarios"]["Base"], n=400)
-    narrow_inp = {**inp, "monte_carlo": {"widen": 1.0}}
-    narrow = v.monte_carlo(narrow_inp, inp["scenarios"]["Base"], n=400)
-    assert wide["widen"] == v.MC_WIDEN and narrow["widen"] == 1.0
+    wide = v.monte_carlo(inp, inp["scenarios"]["Base"], n=800)
+    narrow = v.monte_carlo({**inp, "monte_carlo": {"model_error": 0}}, inp["scenarios"]["Base"], n=800)
+    assert narrow["widen"] == 1.0 and wide["widen"] > 1.0
     assert wide["median"] == pytest.approx(
-        narrow["median"], rel=1e-5
+        narrow["median"], rel=1e-4
     )  # even n: the median averages two draws
-    spread = lambda m: np.log(m["p90"] / m["p10"])
-    assert spread(wide) == pytest.approx(v.MC_WIDEN * spread(narrow), rel=1e-3)
+    sigma = lambda m: np.log(m["p90"] / m["p10"]) / (2 * 1.2815515655446004)
+    assert sigma(wide) == pytest.approx((sigma(narrow) ** 2 + v.MC_MODEL_ERR**2) ** 0.5, rel=2e-3)
 
 
 def test_widen_draws_leaves_nonpositive_values_and_a_nonpositive_median_alone():
     import numpy as np
 
-    assert np.allclose(v.widen_draws([-3.0, -2.0, -1.0]), [-3.0, -2.0, -1.0])
-    out = v.widen_draws([-1.0, 5.0, 10.0, 20.0, 40.0])
-    assert out[0] == -1.0 and np.median(out) == pytest.approx(10.0)
+    flat, k = v.widen_draws([-3.0, -2.0, -1.0] * 10)
+    assert k == 1.0 and np.allclose(flat, [-3.0, -2.0, -1.0] * 10)
+    x = np.linspace(-1.0, 40.0, 101)
+    out, k = v.widen_draws(x)
+    assert k > 1 and out[0] == -1.0 and np.median(out) == pytest.approx(np.median(x))
+    assert v.widen_draws(x[:10])[1] == 1.0  # too few draws to measure a spread
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js not installed")
+def test_python_and_javascript_widen_draws_agree():
+    import numpy as np
+
+    x = np.sort(np.random.default_rng(3).lognormal(5.0, 0.3, 400))
+    js = "const M=require(process.argv[1]);const x=JSON.parse(require('fs').readFileSync(0,'utf8'));console.log(JSON.stringify(M.widenDraws(x,0.5)))"
+    out = subprocess.run(
+        [NODE, "-e", js, str(ENGINE / "web" / "model.js")],
+        input=json.dumps(x.tolist()),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    vals, k = json.loads(out.stdout)
+    py, kp = v.widen_draws(x)
+    assert k == pytest.approx(kp, rel=1e-12) and np.allclose(vals, py, rtol=1e-12)

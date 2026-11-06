@@ -125,3 +125,23 @@ def _feeds_without_peers():
     f = RP.from_fixture(json.loads(gzip.decompress(fx.read_bytes())))
     f["peers"] = {}
     return f
+
+
+def test_build_survives_a_zero_revenue_year():
+    f = _feeds_without_peers()
+    rev = f["annual"]["TotalRevenue"]
+    rev[0] = [rev[0][0], 0.0]
+    inp = RP.build(f)
+    assert inp["scenarios"]["Base"]["margins"]["total"]
+
+
+def test_band_coverage_counts_only_named_tickers_with_an_outcome():
+    recs = [
+        {"ticker": "A", "mc_p10": 1, "mc_p90": 3, "later_price12": 2},
+        {"ticker": "A", "mc_p10": 1, "mc_p90": 3, "later_price12": 5},
+        {"ticker": "A", "error": "x"},
+        {"ticker": "B", "mc_p10": 1, "mc_p90": 3, "later_price12": 2},
+        {"ticker": "A", "mc_p10": 1, "mc_p90": 3, "later_price12": None},
+    ]
+    assert B.band_coverage(recs, {"A"}) == (2, 0.5)
+    assert B.band_coverage(recs, {"Z"})[0] == 0

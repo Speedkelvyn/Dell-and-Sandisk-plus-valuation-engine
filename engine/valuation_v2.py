@@ -558,21 +558,29 @@ def sensitivity(inp, scen, k1, v1, k2, v2):
 
 # The Monte Carlo spread from parameter shocks alone is too narrow: in the point-in-time backtest (backtest/REPORT.md,
 # 587 valuations) the 10th to 90th percentile band held the price a year later only 49% of the time instead of 80%.
-# Stretching each draw's log distance from the median by this factor gave 80% coverage in that sample. It captures
-# model error (the forecast being wrong in ways the shocks do not span); it does not move the median or the verdict.
-MC_WIDEN = 2.1
+# The gap is model error the shocks do not span. It is added in quadrature to each valuation's own log spread,
+# sigma_total^2 = sigma_mc^2 + MC_MODEL_ERR^2, with MC_MODEL_ERR = 0.5 (80% coverage pooled, and 81%, 82%, 75%
+# across the narrow, middle and wide thirds of sigma_mc; scaling every spread by a constant instead gave 70%, 83%, 88%).
+# Each draw's log distance from the median is scaled by one factor, so the median and the order are unchanged.
+MC_MODEL_ERR = 0.5
+_Z90 = 1.2815515655446004
 
 
-def widen_draws(v, k=MC_WIDEN):
-    """Stretch simulated values about their median in log space (median and ordering unchanged)."""
+def widen_draws(v, err=MC_MODEL_ERR):
+    """Scale simulated values about their median in log space so the spread is sqrt(own^2 + err^2). Returns (values, k)."""
     v = np.asarray(v, float)
     med = np.median(v)
-    if not (med > 0) or k == 1:
-        return v
+    pos = v[v > 0]
+    if not (med > 0) or not err or pos.size < 20:
+        return v, 1.0
+    s = float(np.log(np.percentile(pos, 90) / np.percentile(pos, 10)) / (2 * _Z90))
+    if not (s > 1e-9):
+        return v, 1.0
+    k = (1.0 + (err / s) ** 2) ** 0.5
     out = v.copy()
-    pos = v > 0
-    out[pos] = med * (v[pos] / med) ** k
-    return out
+    pm = v > 0
+    out[pm] = med * (v[pm] / med) ** k
+    return out, k
 
 
 def monte_carlo(
@@ -616,10 +624,10 @@ def monte_carlo(
         if w - trial["terminal"]["g"] < 0.01:
             continue
         vals.append(dcf(trial, S, w)["perShare"])
-    v = widen_draws(np.array(vals), (inp.get("monte_carlo") or {}).get("widen", MC_WIDEN))
+    v, k_widen = widen_draws(np.array(vals), (inp.get("monte_carlo") or {}).get("model_error", MC_MODEL_ERR))
     p = inp["market"]["price"]
     return {
-        "widen": (inp.get("monte_carlo") or {}).get("widen", MC_WIDEN),
+        "widen": k_widen,
         "values": v,
         "n": v.size,
         "mean": v.mean(),
@@ -659,10 +667,10 @@ def monte_carlo_fin(
         if r - trial["terminal"]["g"] < 0.01:
             continue
         vals.append(fin_value(trial, S, r)["perShare"])
-    v = widen_draws(np.array(vals), (inp.get("monte_carlo") or {}).get("widen", MC_WIDEN))
+    v, k_widen = widen_draws(np.array(vals), (inp.get("monte_carlo") or {}).get("model_error", MC_MODEL_ERR))
     p = inp["market"]["price"]
     return {
-        "widen": (inp.get("monte_carlo") or {}).get("widen", MC_WIDEN),
+        "widen": k_widen,
         "values": v,
         "n": v.size,
         "mean": v.mean(),

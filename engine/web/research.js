@@ -266,7 +266,7 @@
     const hist = (A.TotalRevenue || [])
       .map(([d, r]) => {
         const oi = (A.OperatingIncome || []).find((x) => x[0] === d);
-        return oi ? oi[1] / r : null;
+        return oi && r ? oi[1] / r : null;
       })
       .filter((x) => x != null);
     const mAvg = hist.length ? hist.reduce((a, b) => a + b, 0) / hist.length : mTTM;

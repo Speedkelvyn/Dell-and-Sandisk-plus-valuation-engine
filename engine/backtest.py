@@ -38,8 +38,24 @@ import research as RP  # noqa: E402
 import valuation_v2 as v  # noqa: E402
 
 # Statement model by company type. Yahoo's industry label is not point-in-time, so the universe file names it.
-FINANCIAL = {"JPM", "BAC", "TRV", "ALL"}
-REIT = {"O", "PLD", "SPG"}
+FINANCIAL = {
+    "JPM",
+    "BAC",
+    "TRV",
+    "ALL",
+    "WFC",
+    "C",
+    "GS",
+    "MS",
+    "MET",
+    "PRU",
+    "AIG",
+    "CB",
+    "PGR",
+    "USB",
+    "PNC",
+}
+REIT = {"O", "PLD", "SPG", "AMT", "EQIX", "PSA", "WELL", "VICI"}
 SINCE = "2016-12-31"
 
 
@@ -169,6 +185,14 @@ def value_at(ticker, facts, px, idx, tnx, asof, mc_n=300):
         if f is None:
             return {**rec, "error": "filings too thin"}
         inp = RP.build(f)
+    except (ValueError, KeyError, ZeroDivisionError, TypeError, IndexError) as e:
+        return {**rec, "error": f"{type(e).__name__}: {e}"}
+    return value_inputs(rec, f, inp, px, idx, asof, mc_n)
+
+
+def value_inputs(rec, f, inp, px, idx, asof, mc_n=300):
+    """Run the engine on built inputs and attach what happened next (shared by the backtest and the out-of-sample test)."""
+    try:
         R = v.run_all(inp, "Base", mc_n=mc_n)
     except (ValueError, KeyError, ZeroDivisionError, TypeError, IndexError) as e:
         return {**rec, "error": f"{type(e).__name__}: {e}"}
@@ -187,6 +211,7 @@ def value_at(ticker, facts, px, idx, tnx, asof, mc_n=300):
         fair=fair,
         upside=fair / price - 1,
         call=vd["call"],
+        grade=(vd.get("quality") or {}).get("grade"),
         prob_above=None if prob is None else float(prob),
         ke=float(R["W"]["ke"]),
         mc_p10=float(mc["p10"]) if mc.get("p10") is not None else None,
@@ -391,6 +416,57 @@ def summarize(recs, horizon=12):
     return out
 
 
+# the companies the width of MC_MODEL_ERR was chosen on; every other name in a run is out of sample for that choice
+TUNED = frozenset(
+    [
+        "AAPL",
+        "ALL",
+        "BAC",
+        "CAT",
+        "COST",
+        "CSCO",
+        "CVX",
+        "DE",
+        "DELL",
+        "F",
+        "HD",
+        "INTC",
+        "JPM",
+        "KO",
+        "MRK",
+        "MSFT",
+        "NKE",
+        "O",
+        "ON",
+        "ORCL",
+        "PFE",
+        "PG",
+        "PLD",
+        "SPG",
+        "TRV",
+        "TXN",
+        "UNH",
+        "WMT",
+        "XOM",
+    ]
+)
+
+
+def band_coverage(recs, names):
+    """(valuations, share of later 12-month prices inside the 10th-90th band) for the given tickers."""
+    rs = [
+        r
+        for r in recs
+        if "error" not in r
+        and r["ticker"] in names
+        and r.get("later_price12") is not None
+        and r.get("mc_p10") is not None
+    ]
+    if not rs:
+        return 0, float("nan")
+    return len(rs), sum(r["mc_p10"] <= r["later_price12"] <= r["mc_p90"] for r in rs) / len(rs)
+
+
 def report(recs, stats6, stats12, start, end) -> str:
     L = ["# Point-in-time backtest", ""]
     s = stats12
@@ -473,10 +549,19 @@ def report(recs, stats6, stats12, start, end) -> str:
             + ".",
             "",
         ]
+    seen = {r["ticker"] for r in recs}
+    n_in, c_in = band_coverage(recs, seen & TUNED)
+    n_out, c_out = band_coverage(recs, seen - TUNED)
+    split = (
+        f". Coverage of the 80% band at 12 months: {c_in:.0%} on those {len(seen & TUNED)} companies ({n_in} valuations) "
+        f"and {c_out:.0%} on the {len(seen - TUNED)} others ({n_out}), which the choice never saw."
+        if n_out
+        else ", so the coverage shown above is in-sample by construction."
+    )
     L += [
         "## Read this before relying on it",
         "",
-        "* The Monte Carlo band is stretched by MC_WIDEN = 2.1, a factor chosen on this same sample (before the stretch the band held the later price 49% of the time), so the coverage shown above is in-sample by construction. Out-of-sample coverage is unknown.",
+        f"* Each valuation's Monte Carlo band is widened by a model-error term of 0.5 added in quadrature to its own log spread (MC_MODEL_ERR). The size was chosen on {len(TUNED)} companies (before it the band held the later price 49% of the time){split}",
         "* P(value > price) is still not a skilled forecast of beating the market (its Brier score is above the base rate's): the band is now honest about the width of outcomes, not about their direction.",
         "* Quarterly dates with 12-month windows overlap, so the independent sample is a fraction of the row count.",
         "* The universe is large, liquid US companies that exist today, so it carries survivorship bias and covers one market regime.",

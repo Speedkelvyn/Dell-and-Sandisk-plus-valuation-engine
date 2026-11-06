@@ -365,7 +365,7 @@ def build(f):
             "scenarios.Base.margins.total.0",
             "Operating margin is negative; an FCFF DCF on today's margin is unreliable",
         )
-    hist = [oi[1] / r for d, r in (TR or []) for oi in [find(A.get("OperatingIncome"), d)] if oi]
+    hist = [oi[1] / r for d, r in (TR or []) if r for oi in [find(A.get("OperatingIncome"), d)] if oi]
     m_avg = _jsum(hist) / len(hist) if hist else m_ttm
     m_min = min(hist) if hist else (m_ttm * 0.8 if m_ttm is not None else None)
     base_lr = (m_ttm + m_avg) / 2 if m_ttm is not None and m_avg is not None else None

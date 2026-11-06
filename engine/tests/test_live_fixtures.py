@@ -133,10 +133,12 @@ def test_monte_carlo_margin_spread_comes_from_history(built):
 
 
 def test_margin_shock_widens_the_simulation():
+    # the model-error term is switched off so the test sees the simulation's own spread
     inp = run_valuation.load("dell")
+    inp["monte_carlo"] = {**(inp.get("monte_carlo") or {}), "model_error": 0}
     narrow = v.monte_carlo(inp, inp["scenarios"]["Base"], n=400)
     wide_inp = copy.deepcopy(inp)
-    wide_inp["monte_carlo"] = {"sd_margin": 0.05}
+    wide_inp["monte_carlo"] = {"sd_margin": 0.05, "model_error": 0}
     wide = v.monte_carlo(wide_inp, wide_inp["scenarios"]["Base"], n=400)
     assert wide["p90"] - wide["p10"] > 1.5 * (narrow["p90"] - narrow["p10"])
     scaled_inp = copy.deepcopy(wide_inp)
