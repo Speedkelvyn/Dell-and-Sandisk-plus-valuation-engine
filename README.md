@@ -63,7 +63,7 @@ Fair value blends the DCF, the Monte Carlo median, the comparables and the peer 
 3. **Discount rate.** CAPM cost of equity with beta regressed on two years of daily returns against the S&P 500, then blended into WACC.
 4. **Discount.** A ten-year explicit forecast plus a Gordon terminal value with return on new invested capital, cross-checked against an exit multiple.
 5. **Price.** Enterprise value bridged to equity value and divided by diluted shares.
-6. **Verdict.** DCF, Monte Carlo, comparables and regression blended into a call and an expected alpha. A method that gives a value at or below zero, or above 20 times the price, is left out and named; when none is usable the stock is reported as not valued. The Monte Carlo varies long-run margins by the company's own margin history.
+6. **Verdict.** DCF, Monte Carlo, comparables and regression blended into a call and an expected alpha. A method that gives a value at or below zero, or above 20 times the price, is left out and named; when none is usable the stock is reported as not valued. The Monte Carlo varies long-run margins by the company's own margin history, then stretches each draw's log distance from the median by 2.1 (`MC_WIDEN`) because the shocks alone gave a 10th to 90th percentile band that held the price a year later only 49% of the time in the backtest (`backtest/REPORT.md`). The stretch leaves the median, and so the fair value and the call, unchanged; it widens the range and moves `P(value > price)` toward 50%.
 
 Every input carries a tag: sourced (read from a feed), derived (computed from sourced numbers, formula given) or assumption (a modelling choice that can be changed). Missing debt, cash or yield data stops the model rather than defaulting to zero.
 

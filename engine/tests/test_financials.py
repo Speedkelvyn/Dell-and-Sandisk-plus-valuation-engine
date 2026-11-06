@@ -158,3 +158,26 @@ def test_python_and_javascript_agree_on_financials(t, built):
     assert v.wacc(py)["ke"] == pytest.approx(js["ke"], rel=1e-12)
     for k, x in js["scen"].items():
         assert v.fin_value(py, py["scenarios"][k])["perShare"] == pytest.approx(x, rel=1e-12)
+
+
+def test_monte_carlo_widening_keeps_the_median_and_stretches_the_band(built):
+    import numpy as np
+
+    inp = built["JPM"]
+    wide = v.monte_carlo(inp, inp["scenarios"]["Base"], n=400)
+    narrow_inp = {**inp, "monte_carlo": {"widen": 1.0}}
+    narrow = v.monte_carlo(narrow_inp, inp["scenarios"]["Base"], n=400)
+    assert wide["widen"] == v.MC_WIDEN and narrow["widen"] == 1.0
+    assert wide["median"] == pytest.approx(
+        narrow["median"], rel=1e-5
+    )  # even n: the median averages two draws
+    spread = lambda m: np.log(m["p90"] / m["p10"])
+    assert spread(wide) == pytest.approx(v.MC_WIDEN * spread(narrow), rel=1e-3)
+
+
+def test_widen_draws_leaves_nonpositive_values_and_a_nonpositive_median_alone():
+    import numpy as np
+
+    assert np.allclose(v.widen_draws([-3.0, -2.0, -1.0]), [-3.0, -2.0, -1.0])
+    out = v.widen_draws([-1.0, 5.0, 10.0, 20.0, 40.0])
+    assert out[0] == -1.0 and np.median(out) == pytest.approx(10.0)

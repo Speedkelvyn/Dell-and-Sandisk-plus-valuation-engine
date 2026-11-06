@@ -669,6 +669,14 @@
     return { u, n, tri };
   }
 
+  // Stretch simulated values about their median in log space (see MC_WIDEN in valuation_v2.py)
+  const MC_WIDEN = 2.1;
+  function widenDraws(vals, k) {
+    const med = quantile(vals, 0.5);
+    if (!(med > 0) || k === 1) return vals;
+    return vals.map((v) => (v > 0 ? med * (v / med) ** k : v));
+  }
+
   function monteCarlo(inp, scen, opts) {
     if (isFin(inp)) return monteCarloFin(inp, scen, opts);
     const o = Object.assign(
@@ -697,7 +705,7 @@
       scale = mcs.vol_scale || 1,
       sdAll = (mcs.sd_growth != null ? mcs.sd_growth : o.sdAllG) * scale,
       sdM = (mcs.sd_margin || 0) * scale;
-    const vals = [];
+    let vals = [];
     for (let k = 0; k < o.n; k++) {
       const I = clone(inp),
         S = clone(scen);
@@ -716,8 +724,11 @@
       vals.push(dcf(I, S, { wacc: w }).perShare);
     }
     vals.sort((a, b) => a - b);
+    const wk = (inp.monte_carlo && inp.monte_carlo.widen) ?? MC_WIDEN;
+    vals = widenDraws(vals, wk);
     const p = inp.market.price;
     return {
+      widen: wk,
       values: vals,
       n: vals.length,
       mean: sum(vals) / vals.length,
@@ -751,7 +762,7 @@
     const R = rng(o.seed),
       k0 = wacc(inp).ke,
       er = modelOf(inp) === "excess_return";
-    const vals = [];
+    let vals = [];
     for (let k = 0; k < o.n; k++) {
       const I = clone(inp),
         S = clone(scen);
@@ -767,8 +778,11 @@
       vals.push(finValue(I, S, { wacc: r }).perShare);
     }
     vals.sort((x, y) => x - y);
+    const wk = (inp.monte_carlo && inp.monte_carlo.widen) ?? MC_WIDEN;
+    vals = widenDraws(vals, wk);
     const p = inp.market.price;
     return {
+      widen: wk,
       values: vals,
       n: vals.length,
       mean: sum(vals) / vals.length,
