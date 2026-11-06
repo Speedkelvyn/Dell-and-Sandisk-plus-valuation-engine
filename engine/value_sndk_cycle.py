@@ -6,6 +6,7 @@ engine's own SNDK inputs file, so the two valuations share facts and differ only
 assumptions below are judgements, written out so they can be argued with.
 
     python value_sndk_cycle.py ../sndk/SNDK_inputs.json [out_dir]
+    python value_sndk_cycle.py --attach ../sndk/SNDK_inputs.json   # put the assumptions in the inputs file for the page
 """
 
 from __future__ import annotations
@@ -17,6 +18,9 @@ import sys
 import numpy as np
 
 import cycle_dcf as cd
+
+# Net PP&E at FY26 year end ($M), added to opening net working capital as the invested capital to start from.
+PPE = 674.0
 
 # Engine Base DCF per share for the same date (SNDK_report 2026-11-05), shown on the chart for reference.
 ENGINE_BASE_DCF = 1769.23
@@ -131,6 +135,16 @@ CORR = [
 ]
 
 
+def cycle_block() -> dict:
+    """The assumptions as they are stored in the inputs file, where the page reads them from."""
+    return {
+        "scenarios": SCENARIOS,
+        "dists": {k: list(v) for k, v in DISTS.items()},
+        "corr": [list(c) for c in CORR],
+        "ppe": PPE,
+    }
+
+
 def build(x: dict, inp: dict) -> dict:
     """Turn one set of assumptions `x` (a SCENARIOS entry or a Monte Carlo draw) into a cycle_dcf spec."""
     mk, br, cap, tm = inp["market"], inp["bridge"], inp["capital"], inp["timing"]
@@ -161,7 +175,8 @@ def build(x: dict, inp: dict) -> dict:
         "terminal_tax": inp["operating"]["tax_lr"],
         "sales_to_capital": {"start": x["s2c0"], "end": x["s2cT"]},
         "liquidation": 0.0,
-        "invested_capital": inp["operating"]["nwc0"] + 674.0,  # opening NWC plus net PP&E (FY26 10-K)
+        "invested_capital": inp["operating"]["nwc0"]
+        + inp.get("cycle", {}).get("ppe", PPE),  # opening NWC plus net PP&E
         "equity": mk["price"] * shares,
         "debt": br["core_debt"] + br["leases"],
         "beta": {"knots": [(1, x["beta0"]), (3, x["beta0"]), (10, x["betaT"])]},
@@ -338,7 +353,18 @@ def plot(res: dict, path: pathlib.Path, engine_values: dict | None = None) -> No
     plt.close(fig)
 
 
+def attach(src: pathlib.Path) -> None:
+    """Write the cycle assumptions into an inputs file; the page shows its Cycle tab when they are there."""
+    inp = json.loads(src.read_text())
+    inp["cycle"] = cycle_block()
+    src.write_text(json.dumps(inp, indent=1))
+
+
 def main(argv: list[str]) -> None:
+    if argv[1:2] == ["--attach"]:
+        attach(pathlib.Path(argv[2]))
+        print(f"cycle assumptions written to {argv[2]}")
+        return
     src = pathlib.Path(argv[1] if len(argv) > 1 else "../sndk/SNDK_inputs.json")
     inp = json.loads(src.read_text())
     res = run(inp)

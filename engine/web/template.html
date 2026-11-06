@@ -427,6 +427,28 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
+      .cyr-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .cyr-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 2px 8px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .cyr-row output {
+        color: var(--input);
+        text-align: right;
+      }
+      .cyr-row input {
+        grid-column: 1 / -1;
+        width: 100%;
+        accent-color: var(--amber);
+        min-height: 24px;
+      }
       .chart {
         position: relative;
         height: 260px;
@@ -612,6 +634,7 @@
     <script>
       "use strict";
       const M = window.VModel;
+      const CY = window.VCycle;
       const TABS = [
         ["LOAD", "Research a ticker"],
         ["DES", "Summary"],
@@ -625,6 +648,7 @@
         ["DCF", "DCF"],
         ["SENS", "Sensitivity"],
         ["MC", "Monte Carlo"],
+        ["CYC", "Cycle model"],
         ["RV", "Relative value"],
         ["ANR", "Street"],
         ["FFLD", "Football field"],
@@ -651,6 +675,8 @@
           localStorage.setItem(STORE("vt_active"), CO.active);
         } catch (e) {}
       }
+      // the cycle tab exists only for a company whose inputs carry a cycle block
+      const tabOk = (t) => t !== "CYC" || !!(CY && S.inp.cycle);
       const S = {
         inp: M.clone(companyData(CO.active) || DATA),
         scen: "Base",
@@ -661,9 +687,13 @@
       };
       try {
         const t = localStorage.getItem(STORE("vt_tab"));
-        if (t && TABS.some((x) => x[0] === t)) S.tab = t;
+        if (t && TABS.some((x) => x[0] === t) && tabOk(t)) S.tab = t;
       } catch (e) {}
-      if (location.hash && TABS.some((x) => x[0] === location.hash.slice(1).toUpperCase()))
+      if (
+        location.hash &&
+        TABS.some((x) => x[0] === location.hash.slice(1).toUpperCase()) &&
+        tabOk(location.hash.slice(1).toUpperCase())
+      )
         S.tab = location.hash.slice(1).toUpperCase();
 
       // ---------------------------------------------------------------- format
@@ -832,10 +862,12 @@
               DCF: S.inp.model === "ddm" ? "DDM" : "Excess return",
             }
           : {};
-        $("fkeys").innerHTML = TABS.map(([c, n0], i) => {
-          const n = finLab[c] || n0;
-          return `<button type="button" role="tab" data-tab="${c}" aria-selected="${c === S.tab}">${c}<small>${n}</small></button>`;
-        }).join("");
+        $("fkeys").innerHTML = TABS.filter(([c]) => tabOk(c))
+          .map(([c, n0], i) => {
+            const n = finLab[c] || n0;
+            return `<button type="button" role="tab" data-tab="${c}" aria-selected="${c === S.tab}">${c}<small>${n}</small></button>`;
+          })
+          .join("");
       }
 
       // ---------------------------------------------------------------- charts
@@ -1879,6 +1911,224 @@
                 lines: [
                   { value: p, color: "#ff4d4d", dash: [5, 4], label: `Price ${px(p)}` },
                   { value: R.mc.median, color: "#ffa028", label: `Median ${px(R.mc.median)}`, row: 1 },
+                ],
+              },
+            },
+            scales: {
+              x: {
+                type: "linear",
+                min: lo,
+                max: hi,
+                offset: false,
+                ticks: { callback: (x) => "$" + Math.round(x) },
+              },
+              y: { title: { display: true, text: "draws" } },
+            },
+          },
+        });
+      };
+
+      // ---------------------------------------------------------------- CYC: cycle model (sliders re-value in the browser)
+      const CY_SLIDERS = [
+        ["extA", "Extra boom years after the Street's two", 0, 3, 1, (v) => v.toFixed(0)],
+        ["LB", "Downturn and recovery length, years", 3, 6, 1, (v) => v.toFixed(0)],
+        ["gB0", "Revenue growth, first downturn year", -0.45, 0, 0.01, (v) => pct(v, 0)],
+        ["trough", "Trough EBIT margin", -0.1, 0.35, 0.01, (v) => pct(v, 0)],
+        ["mid", "Mid-cycle EBIT margin", 0.1, 0.48, 0.01, (v) => pct(v, 0)],
+        ["betaT", "Terminal unlevered beta", 1.2, 2.3, 0.05, (v) => v.toFixed(2)],
+        ["excess", "Terminal ROIC above WACC", 0, 0.06, 0.005, (v) => pct(v, 1)],
+      ];
+      function cyState() {
+        const c = S.inp.cycle;
+        if (!S.cy || S.cy.src !== c) {
+          const scen = c.scenarios.Base ? "Base" : Object.keys(c.scenarios)[0];
+          S.cy = { src: c, scen, x: { ...c.scenarios[scen] }, mc: null, mcKey: "", main: null };
+        }
+        return S.cy;
+      }
+      const cyFY = (i) => {
+        const y0 = parseInt(S.inp.meta.year_labels[0].replace(/\D/g, ""), 10);
+        return "FY" + (y0 + i - 1);
+      };
+      function cyMC() {
+        const st = cyState(),
+          I = S.inp;
+        const key = JSON.stringify([I.market, I.bridge, I.capital, I.operating, I.timing, I.rev_y0, I.cycle]);
+        if (st.mcKey !== key) {
+          st.mc = CY.monteCarlo(I, 5000, 7);
+          st.mcKey = key;
+        }
+        return st.mc;
+      }
+      function cyCompute() {
+        const st = cyState();
+        try {
+          return { v: CY.valueAt(st.x, S.inp), mid: CY.impliedMidMargin(st.x, S.inp, S.inp.market.price) };
+        } catch (e) {
+          return { err: e.message };
+        }
+      }
+      function cyKv(o) {
+        if (o.err)
+          return `<p class="note">${o.err}. Lower the terminal beta or raise the discount rate inputs.</p>`;
+        const v = o.v,
+          p = S.inp.market.price,
+          up = v.per_share / p - 1,
+          n = v.n;
+        return `<div class="kv">
+      <span><b class="amb">Value per share</b></span><span><b>${px(v.per_share)}</b></span>
+      <span>vs price ${px(p)}</span><span class="${cls(up)}">${spct(up)}</span>
+      <span>Enterprise value</span><span>${f0(v.ev)}</span>
+      <span>Terminal value share of EV</span><span>${pct(v.tv_share)}</span>
+      <span>WACC, ${cyFY(1)} → ${cyFY(n)}</span><span>${pct(v.wacc[0], 2)} → ${pct(v.wacc[n - 1], 2)}</span>
+      <span>ROIC, ${cyFY(n)}</span><span>${pct(v.roic[n - 1], 1)}</span>
+      <span>Mid-cycle margin the price implies</span><span>${o.mid == null ? "—" : pct(o.mid, 1)}</span>
+      <span>Main-model Base DCF</span><span>${px(cyState().main)}</span></div>`;
+      }
+      function cyTable(v) {
+        const a = (f) => Array.from({ length: v.n }, (_, i) => `<td>${f(i)}</td>`).join("");
+        const m = (x) => f0(Math.abs(x) < 0.5 ? 0 : x);
+        return `<table><thead><tr><th></th>${Array.from({ length: v.n }, (_, i) => `<th>${cyFY(i + 1)}</th>`).join("")}</tr></thead><tbody>
+      <tr><td>Revenue</td>${a((i) => f0(v.revenue[i]))}</tr>
+      <tr><td>Growth</td>${a((i) => pct(v.growth[i], 0))}</tr>
+      <tr><td>EBIT margin</td>${a((i) => pct(v.margin[i], 1))}</tr>
+      <tr><td>NOPAT</td>${a((i) => m(v.nopat[i]))}</tr>
+      <tr><td>Reinvestment</td>${a((i) => m(v.reinvestment[i]))}</tr>
+      <tr><td>Free cash flow</td>${a((i) => m(v.fcff[i]))}</tr>
+      <tr><td>WACC</td>${a((i) => pct(v.wacc[i], 2))}</tr>
+      <tr><td>ROIC</td>${a((i) => pct(v.roic[i], 0))}</tr>
+      <tr class="sum"><td>PV of free cash flow</td>${a((i) => m(v.pv[i]))}</tr></tbody></table>`;
+      }
+      function cyPaint(v) {
+        const labels = Array.from({ length: v.n }, (_, i) => cyFY(i + 1));
+        const data = {
+          labels,
+          datasets: [
+            {
+              type: "bar",
+              label: "Revenue, $B",
+              data: Array.from(v.revenue, (x) => x / 1000),
+              backgroundColor: "#2f6db3",
+              yAxisID: "y",
+              order: 2,
+            },
+            {
+              type: "line",
+              label: "EBIT margin",
+              data: Array.from(v.margin, (x) => x * 100),
+              borderColor: "#ffa028",
+              backgroundColor: "#ffa028",
+              pointRadius: 2,
+              yAxisID: "y1",
+              order: 1,
+            },
+          ],
+        };
+        const c = S.charts.cCY;
+        if (c) {
+          c.data = data;
+          c.update("none");
+          return;
+        }
+        chart("cCY", {
+          data,
+          options: {
+            plugins: { legend: { labels: { boxWidth: 10 } } },
+            scales: {
+              y: { title: { display: true, text: "revenue, $B" }, beginAtZero: true },
+              y1: {
+                position: "right",
+                title: { display: true, text: "EBIT margin, %" },
+                grid: { drawOnChartArea: false },
+                ticks: { callback: (x) => x + "%" },
+              },
+            },
+          },
+        });
+      }
+      function cyUpdate() {
+        const o = cyCompute(),
+          st = cyState();
+        $("cyKv").innerHTML = cyKv(o);
+        for (const [k, , , , , fmt] of CY_SLIDERS) {
+          const out = document.querySelector(`[data-cyo="${k}"]`);
+          if (out) out.textContent = fmt(st.x[k]);
+        }
+        if (o.v) {
+          $("cyTbl").innerHTML = cyTable(o.v);
+          cyPaint(o.v);
+        }
+      }
+      RENDER.CYC = (R) => {
+        const st = cyState(),
+          I = S.inp,
+          mc = cyMC(),
+          p = I.market.price;
+        st.main = R.base.perShare;
+        const o = cyCompute();
+        return `
+  <div class="title"><h1>CYC · Cycle model — ${st.scen}</h1><div class="sub">Boom, downturn, mid-cycle margin · discount rate moves with beta · reinvestment from sales-to-capital · same price, shares and balance sheet as the main model</div></div>
+  <div class="grid">
+    <section class="box c4"><h2>Scenario and drivers</h2>
+      <div class="seg" role="group" aria-label="Cycle scenario">${Object.keys(I.cycle.scenarios)
+        .map((k) => `<button type="button" data-cyscen="${k}" aria-pressed="${k === st.scen}">${k}</button>`)
+        .join("")}</div>
+      <div class="cyr-list">${CY_SLIDERS.map(
+        ([k, lab, lo, hi, step, fmt]) =>
+          `<label class="cyr-row"><span>${lab}</span><output data-cyo="${k}">${fmt(st.x[k])}</output><input class="cyr" type="range" data-cy="${k}" min="${lo}" max="${hi}" step="${step}" value="${st.x[k]}" aria-label="${lab}"></label>`,
+      ).join("")}</div>
+      <p class="note">Drag a slider and the value updates. Switching scenario resets the sliders.</p></section>
+    <section class="box c8"><h2>Result</h2><div id="cyKv">${cyKv(o)}</div>
+      <h2 style="margin-top:14px">Revenue and EBIT margin</h2><div class="chart"><canvas id="cCY"></canvas></div></section>
+    <section class="box"><h2>Reading it</h2><ul class="list note">
+      <li>${cyFY(1)} and ${cyFY(2)} follow the Street. Everything after is a judgement: how long the boom lasts, how deep the fall goes, what a normal year earns.</li>
+      <li>The price is the line to beat: the implied mid-cycle margin is what the market is paying for, holding the other sliders.</li>
+      <li>Not backtested. The existing backtest covers the main model only.</li></ul></section>
+    <section class="box"><h2>Year by year <span>$m</span></h2><div class="scroll" id="cyTbl">${o.v ? cyTable(o.v) : ""}</div></section>
+    <section class="box c8"><h2>Monte Carlo, ${f0(mc.n)} draws</h2><div class="chart tall"><canvas id="cCYMC"></canvas></div>
+      <p class="note">Twenty inputs drawn together, tied by a Gaussian copula. Independent of the sliders. Histogram covers the 1st to 99th percentile.</p></section>
+    <section class="box c4"><h2>Statistics</h2><div class="kv">
+      <span>Median</span><span>${px(mc.median)}</span>
+      <span>Mean</span><span>${px(mc.mean)}</span>
+      <span>10th / 90th pct</span><span>${px(mc.percentiles[1].per_share)} / ${px(mc.percentiles[9].per_share)}</span>
+      <span>Dropped draws</span><span>${f0(mc.dropped)}</span>
+      <span><b class="amb">P(value &gt; price)</b></span><span><b>${pct(mc.probAbove, 0)}</b></span></div>
+      <p class="note">Valuation illustration on public data, not investment advice.</p></section>
+  </div>`;
+      };
+      RENDER.CYC.after = () => {
+        const o = cyCompute();
+        if (o.v) cyPaint(o.v);
+        const mc = cyMC(),
+          v = mc.values,
+          p = S.inp.market.price,
+          lo = v[Math.floor(v.length * 0.01)],
+          hi = v[Math.floor(v.length * 0.99)],
+          nb = 40,
+          w = (hi - lo) / nb;
+        const bins = Array(nb).fill(0);
+        for (const x of v) if (x >= lo && x <= hi) bins[Math.min(nb - 1, Math.floor((x - lo) / w))]++;
+        const pts = bins.map((b, i) => ({ x: lo + (i + 0.5) * w, y: b }));
+        chart("cCYMC", {
+          type: "bar",
+          data: {
+            datasets: [
+              {
+                data: pts,
+                backgroundColor: pts.map((d) => (d.x > p ? "#2a7f62" : "#2f6db3")),
+                barPercentage: 1,
+                categoryPercentage: 1,
+              },
+            ],
+          },
+          options: {
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { title: (c) => px(c[0].raw.x), label: (c) => c.raw.y + " draws" } },
+              vlines: {
+                lines: [
+                  { value: p, color: "#ff4d4d", dash: [5, 4], label: `Price ${px(p)}` },
+                  { value: mc.median, color: "#ffa028", label: `Median ${px(mc.median)}`, row: 1 },
                 ],
               },
             },
@@ -3230,6 +3480,7 @@
             `<div class="box"><h2>Input error</h2><p class="note">${e.message}. Undo the last change or press Reset inputs.</p></div>`;
           return;
         }
+        if (!tabOk(S.tab)) S.tab = "DES";
         renderHeader(R);
         for (const id of Object.keys(S.charts)) {
           S.charts[id].destroy();
@@ -3247,7 +3498,7 @@
       }
 
       function go(tab) {
-        if (!TABS.some((t) => t[0] === tab)) return false;
+        if (!TABS.some((t) => t[0] === tab) || !tabOk(tab)) return false;
         S.tab = tab;
         try {
           localStorage.setItem(STORE("vt_tab"), tab);
@@ -3272,7 +3523,26 @@
         if (s) {
           S.scen = s.dataset.scen;
           render();
+          return;
         }
+        const cs = e.target.closest("[data-cyscen]");
+        if (cs) {
+          const st = cyState();
+          st.scen = cs.dataset.cyscen;
+          st.x = { ...S.inp.cycle.scenarios[st.scen] };
+          render();
+        }
+      });
+      let cyRaf = 0;
+      document.addEventListener("input", (e) => {
+        const el = e.target;
+        if (!el.matches("input.cyr")) return;
+        cyState().x[el.dataset.cy] = parseFloat(el.value);
+        if (!cyRaf)
+          cyRaf = requestAnimationFrame(() => {
+            cyRaf = 0;
+            cyUpdate();
+          });
       });
       document.addEventListener("change", (e) => {
         const el = e.target;

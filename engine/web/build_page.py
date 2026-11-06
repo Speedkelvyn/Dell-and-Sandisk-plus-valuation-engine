@@ -4,9 +4,10 @@
     python build_page.py ../../sndk/SNDK_inputs.json ../../sndk/index.html
     python build_page.py AAPL_inputs.json aapl.html --inline     # one self-contained file
 
-By default the page loads the engine (model.js) and the research module (research.js)
-from this folder, so every company page on the site shares one copy of the code.
-With --inline both are embedded, which gives a single file you can open anywhere.
+By default the page loads the engine (model.js), the research module (research.js) and the cycle
+model (cycle.js) from this folder, so every company page on the site shares one copy of the code.
+cycle.js adds the Cycle model tab, which a page shows only when its inputs carry a "cycle" block.
+With --inline all three are embedded, which gives a single file you can open anywhere.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ import os
 import pathlib
 
 HERE = pathlib.Path(__file__).resolve().parent
-ENGINE_FILES = ("model.js", "research.js")
+ENGINE_FILES = ("model.js", "research.js", "cycle.js")
 SITE_LINKS = (
     '<nav class="site-links" aria-label="Site">\n'
     '  <a href="https://github.com/Speedkelvyn/Dell-and-Sandisk-plus-valuation-engine/tree/main/engine"'
