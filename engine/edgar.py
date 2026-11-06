@@ -101,6 +101,40 @@ FIELDS = {
     "CommonStockEquity": ("instant", USD, 1, ["StockholdersEquity"]),
     "MinorityInterest": ("instant", USD, 1, ["MinorityInterest"]),
     "OrdinarySharesNumber": ("instant", SHARES, 1, ["CommonStockSharesOutstanding"]),
+    # the lines the earnings-quality grade (Beneish M-score, accruals, cash conversion) reads
+    "OperatingCashFlow": (
+        "flow",
+        USD,
+        1,
+        [
+            "NetCashProvidedByUsedInOperatingActivities",
+            "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations",
+        ],
+    ),
+    "CostOfRevenue": (
+        "flow",
+        USD,
+        1,
+        ["CostOfRevenue", "CostOfGoodsAndServicesSold", "CostOfGoodsSold", "CostOfServices"],
+    ),
+    "SellingGeneralAndAdministration": ("flow", USD, 1, ["SellingGeneralAndAdministrativeExpense"]),
+    "CurrentAssets": ("instant", USD, 1, ["AssetsCurrent"]),
+    "CurrentLiabilities": ("instant", USD, 1, ["LiabilitiesCurrent"]),
+    "NetPPE": (
+        "instant",
+        USD,
+        1,
+        [
+            "PropertyPlantAndEquipmentNet",
+            "PropertyPlantAndEquipmentAndFinanceLeaseRightOfUseAssetAfterAccumulatedDepreciationAndAmortization",
+        ],
+    ),
+    "LongTermDebt": (
+        "instant",
+        USD,
+        1,
+        ["LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations", "LongTermDebt"],
+    ),
 }
 DEBT_CURRENT = ["LongTermDebtCurrent", "DebtCurrent", "LongTermDebtAndCapitalLeaseObligationsCurrent"]
 DEBT_OTHER = ["ShortTermBorrowings", "CommercialPaper"]
