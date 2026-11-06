@@ -63,10 +63,14 @@ def value(
     page: bool = True,
     fetcher=None,
     builder=None,
+    sec: bool = False,
+    sec_fetcher=None,
 ) -> tuple[dict, dict, dict[str, pathlib.Path]]:
     """Run the whole pipeline. Returns (inputs, engine result, files written).
 
     `fetcher` and `builder` default to fetch_yahoo.fetch and research.build; tests replace them.
+    With sec=True the financial statements come from SEC filings (needs SEC_USER_AGENT set to your name and email);
+    a saved *_edgar_*.json.gz next to the snapshot is picked up automatically on a rerun.
     """
     if (ticker is None) == (snapshot is None):
         raise SystemExit("Give either a ticker or --snapshot FILE.")
@@ -86,6 +90,23 @@ def value(
     folder = pathlib.Path(out) if out else default_folder(symbol)
     folder.mkdir(parents=True, exist_ok=True)
     written: dict[str, pathlib.Path] = {}
+
+    saved_sec = sorted(
+        (pathlib.Path(snapshot).parent if snapshot else folder).glob(f"{symbol}_edgar_*.json.gz")
+    )
+    if sec or saved_sec:
+        import gzip
+
+        import edgar
+
+        if snapshot is not None and saved_sec:
+            facts = edgar.load(saved_sec[-1])
+        else:
+            facts = (sec_fetcher or edgar.fetch)(symbol)
+            written["sec"] = folder / f"{symbol}_edgar_{feeds['today']}.json.gz"
+            written["sec"].write_bytes(gzip.compress(json.dumps(facts).encode("utf-8"), 6))
+        feeds = edgar.overlay(feeds, edgar.parse(facts))
+        print(f"Statements: SEC filings, latest filed {feeds['fundamentals']['filed']}")
 
     if snapshot is None:
         import fetch_yahoo
@@ -124,11 +145,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--out", type=pathlib.Path, help="output folder (default <ticker>/ next to dell/ and sndk/)"
     )
+    ap.add_argument(
+        "--sec",
+        action="store_true",
+        help="take the financial statements from SEC filings (set SEC_USER_AGENT='Your Name you@example.com')",
+    )
     ap.add_argument("--no-excel", action="store_true", help="skip the Excel workbook")
     ap.add_argument("--no-page", action="store_true", help="skip the interactive page")
     a = ap.parse_args(argv)
     _, R, written = value(
-        a.ticker, a.snapshot, a.peers, a.scenario, a.mc, a.out, not a.no_excel, not a.no_page
+        a.ticker, a.snapshot, a.peers, a.scenario, a.mc, a.out, not a.no_excel, not a.no_page, sec=a.sec
     )
     print("Written:")
     for kind, path in written.items():

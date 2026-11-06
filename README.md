@@ -25,6 +25,8 @@ streamlit run app.py
 
 Pick Try the examples on the Watchlist tab to see everything without internet. Live data comes from Yahoo Finance through `yfinance` and is saved once a day in `my_data/cache`, so a second run is instant. Lists and holdings are saved in `my_data/` on your computer and excluded from git. A ticker whose data leaves a gap the model needs is listed as Needs inputs with the missing figures named; the engine never fills a gap with zero.
 
+**SEC filings.** For US companies the financial statements can come straight from the SEC (10-K and 10-Q data, free, no key) instead of Yahoo: in the sidebar open "Where the financial statements come from" and enter your name and email (the SEC asks every program to identify itself), or set `SEC_USER_AGENT='Your Name you@example.com'` and run `python engine/value_ticker.py AAPL --sec`. Quarters are rebuilt from year-to-date filings, impairment and restructuring-impairment charges are added back to operating income as Yahoo does (the figure as filed is kept as `OperatingIncomeReported`), and operating leases stay out of debt. On saved filings for Dell, Sandisk and ON the SEC and Yahoo agree to within 1% on every shared line except operating income, where Yahoo makes further adjustments; base-case values move by up to about 5%. The SEC series is also a quarter fresher for some companies (ON's September quarter was filed on 2 November). Foreign companies that file 20-F are not covered and fall back to Yahoo.
+
 To put the app on the web (for example on Streamlit Community Cloud: repository `Speedkelvyn/Dell-and-Sandisk-plus-valuation-engine`, branch `main`, main file `app.py`), nothing else is needed: a shared copy detects itself, keeps no watchlist or holdings on the server, and shows the examples even if Yahoo Finance refuses the server's requests. Run it on your own computer for live data and saved lists.
 
 **Macro.** A 12-month recession probability (the New York Fed yield-curve model, adjusted for the Sahm rule, unemployment, jobless claims, high-yield spreads and financial conditions) sets the Bear/Base/Bull weights of a probability-weighted DCF shown next to the fair value; VIX against its five-year median widens or narrows the Monte Carlo. Two stress overlays, AI data-center spending and Chinese competition, move growth and long-run margins by the company's exposure. None of this changes the fair value itself.
@@ -99,6 +101,7 @@ python engine/web/build_page.py dell/dell_inputs.json dell/index.html
 | `engine/valuation_v2.py` | The engine: segments, margins, FCFF, WACC, DCF, equity bridge, reverse DCF, sensitivity, Monte Carlo, comparables, verdict |
 | `engine/web/` | The same engine in JavaScript (`model.js`), the research module (`research.js`), the page template and its builder |
 | `engine/research.py`, `engine/fetch_yahoo.py` | Turn Yahoo Finance feeds into an inputs file with provenance tags |
+| `engine/edgar.py` | SEC filings (XBRL company facts) turned into the same annual and quarterly series, with quarters rebuilt from year-to-date figures and a cross-check against Yahoo |
 | `engine/beta_daily.py` | Daily CAPM beta against the index, saved into an inputs file |
 | `engine/excel_model.py` | The workbook with live formulas and a scenario switch |
 | `engine/framework.py` | The valuation one step at a time, with every formula shown with its numbers |

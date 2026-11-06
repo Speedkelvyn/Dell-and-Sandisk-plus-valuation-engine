@@ -15,6 +15,7 @@ import datetime as dt
 import hashlib
 import json
 import math
+import os
 import pathlib
 import sys
 
@@ -103,6 +104,28 @@ with st.sidebar:
         value=False,
         help="Today's data is saved the first time you value a ticker. Tick this to download it again.",
     )
+    with st.expander("Where the financial statements come from"):
+        src = st.radio(
+            "Statements",
+            ["Automatic", "Yahoo Finance only", "SEC filings"],
+            label_visibility="collapsed",
+            help="SEC filings are the companies' own 10-K and 10-Q numbers, free and a quarter fresher than Yahoo "
+            "for some companies. Automatic uses them when an SEC contact is set and falls back to Yahoo if the SEC "
+            "cannot be reached. US filers only. Prices, peers and news always come from Yahoo.",
+        )
+        if S.HOSTED:
+            st.caption("On the shared copy the SEC contact is set by the host (SEC_USER_AGENT).")
+        else:
+            contact = st.text_input(
+                "Your name and email",
+                value=os.environ.get("SEC_USER_AGENT", ""),
+                placeholder="Your Name you@example.com",
+                help="The SEC asks every program that downloads its data to identify itself. It is used only in "
+                "the request header and is not saved.",
+            )
+            if contact.strip():
+                os.environ["SEC_USER_AGENT"] = contact.strip()
+        S.FUNDAMENTALS = {"Automatic": "auto", "Yahoo Finance only": "yahoo", "SEC filings": "edgar"}[src]
     use_macro = st.checkbox(
         "Use the macro backdrop",
         value=True,

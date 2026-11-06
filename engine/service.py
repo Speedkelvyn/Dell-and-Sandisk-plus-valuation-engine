@@ -35,6 +35,7 @@ for _p in (HERE, HERE / "web"):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
+import edgar as EDGAR  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
@@ -102,6 +103,58 @@ def snapshot_path(
     return pathlib.Path(cache_dir) / f"{ticker}_yahoo_{day}{_peers_key(peers)}.json"
 
 
+# Where the financial statements come from: "auto" uses SEC filings when the SEC contact is set (environment variable
+# SEC_USER_AGENT) or a filing snapshot is already saved, and otherwise Yahoo; "edgar" requires the SEC; "yahoo" never
+# calls it. Prices, peers, news and consensus always come from Yahoo.
+FUNDAMENTALS = os.environ.get("VALUATION_FUNDAMENTALS", "auto")
+
+
+def sec_path(cache_dir: pathlib.Path, ticker: str, day: str) -> pathlib.Path:
+    return pathlib.Path(cache_dir) / f"{ticker}_edgar_{day}.json.gz"
+
+
+def get_sec(ticker: str, cache_dir: pathlib.Path, day: str, refresh: bool = False, fetcher=None) -> dict:
+    """The compact SEC companyfacts for a ticker (saved once a day), or an exception saying why not."""
+    path = sec_path(cache_dir, ticker, day)
+    if path.exists() and not refresh:
+        with contextlib.suppress(OSError, ValueError):
+            return EDGAR.load(path)
+    facts = (fetcher or EDGAR.fetch)(ticker)
+    with contextlib.suppress(OSError):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        import gzip
+
+        path.write_bytes(gzip.compress(json.dumps(facts).encode("utf-8"), 6))
+    return facts
+
+
+def with_sec(feeds: dict, ticker: str, cache_dir, day: str, mode, refresh=False, sec_fetcher=None) -> dict:
+    """feeds with the SEC statements overlaid, or feeds.fundamentals saying why Yahoo's were kept."""
+    mode = mode or FUNDAMENTALS
+    if mode == "yahoo":
+        return {**feeds, "fundamentals": {"source": "Yahoo Finance", "fields": {}}}
+    wanted = mode == "edgar"
+    try:
+        have = sec_path(cache_dir, ticker, day).exists()
+        if not (wanted or have or sec_fetcher or os.environ.get("SEC_USER_AGENT")):
+            return {**feeds, "fundamentals": {"source": "Yahoo Finance", "fields": {}}}
+        facts = get_sec(ticker, cache_dir, day, refresh, sec_fetcher)
+        out = EDGAR.overlay(feeds, EDGAR.parse(facts))
+        out["fundamentals"]["gaps"] = [
+            {"field": f, "period": p, "date": d, "gap": g}
+            for f, p, d, _e, _y, g in EDGAR.compare(EDGAR.parse(facts), feeds)
+            if g > 0.05 and f not in ("OperatingIncome", "TotalDebt")
+        ]
+        return out
+    except Exception as e:
+        if wanted:
+            raise DataError(f"Could not get SEC filings for {ticker}: {type(e).__name__}: {e}") from e
+        return {
+            **feeds,
+            "fundamentals": {"source": "Yahoo Finance", "fields": {}, "note": f"SEC EDGAR not used: {e}"},
+        }
+
+
 def get_feeds(
     ticker: str,
     peers: list[str] | None = None,
@@ -109,6 +162,8 @@ def get_feeds(
     refresh: bool = False,
     fetcher=None,
     today: str | None = None,
+    fundamentals: str | None = None,
+    sec_fetcher=None,
 ) -> tuple[dict, str]:
     """The Yahoo feeds for a ticker and where they came from ("cache" or "yahoo").
 
@@ -122,7 +177,8 @@ def get_feeds(
     path = snapshot_path(cache_dir, t, day, peers)
     if path.exists() and not refresh:
         with contextlib.suppress(OSError, ValueError, KeyError):
-            return RP.from_fixture(json.loads(path.read_text(encoding="utf-8"))), "cache"
+            cached = RP.from_fixture(json.loads(path.read_text(encoding="utf-8")))
+            return with_sec(cached, t, cache_dir, day, fundamentals, refresh, sec_fetcher), "cache"
     try:
         if fetcher is None:
             import fetch_yahoo
@@ -142,7 +198,7 @@ def get_feeds(
         fetch_yahoo.save_snapshot(feeds, path)
     except OSError:
         pass  # a read-only folder only costs the cache
-    return feeds, "yahoo"
+    return with_sec(feeds, t, cache_dir, day, fundamentals, refresh, sec_fetcher), "yahoo"
 
 
 class MacroError(RuntimeError):
@@ -636,17 +692,21 @@ def build_ticker_inputs(
     cache_dir: pathlib.Path | None = None,
     fetcher=None,
     builder=None,
+    fundamentals: str | None = None,
+    sec_fetcher=None,
 ) -> tuple[dict, str]:
     """Fetch (cached for the day) and build the inputs for one ticker. Raises DataError with a readable message."""
     try:
         t = clean_ticker(ticker)
     except ValueError as e:
         raise DataError(str(e)) from e
-    feeds, source = get_feeds(t, peers, cache_dir, refresh, fetcher)
+    feeds, source = get_feeds(t, peers, cache_dir, refresh, fetcher, None, fundamentals, sec_fetcher)
     try:
         inp = (builder or RP.build)(feeds)
     except Exception as e:
         raise DataError(f"Could not build inputs for {t}: {type(e).__name__}: {e}") from e
+    if isinstance(inp, dict) and feeds.get("fundamentals"):
+        inp["fundamentals_source"] = feeds["fundamentals"]
     if isinstance(inp, dict) and isinstance(feeds.get("summary"), dict) and feeds["summary"].get("price"):
         with contextlib.suppress(Exception):  # sentiment is extra; a bad feed never stops the valuation
             inp["sentiment"] = sentiment_of(feeds)
@@ -686,10 +746,14 @@ def value_ticker(
     builder=None,
     overrides: dict | None = None,
     macro: dict | None = None,
+    fundamentals: str | None = None,
+    sec_fetcher=None,
 ) -> Valuation:
     """Fetch (cached for the day), build the inputs and value one ticker. Problems come back in the result."""
     try:
-        inp, source = build_ticker_inputs(ticker, peers, refresh, cache_dir, fetcher, builder)
+        inp, source = build_ticker_inputs(
+            ticker, peers, refresh, cache_dir, fetcher, builder, fundamentals, sec_fetcher
+        )
     except DataError as e:
         return Valuation(ticker=str(ticker).strip().upper(), scenario=scenario, error=str(e), macro=macro)
     return run(inp, scenario, mc, overrides, source=source, macro=macro)
@@ -705,6 +769,8 @@ def value_many(
     builder=None,
     progress=None,
     macro: dict | None = None,
+    fundamentals: str | None = None,
+    sec_fetcher=None,
 ) -> dict[str, Valuation]:
     """Value a list of tickers one after another. One failing ticker never stops the rest.
 
@@ -724,6 +790,8 @@ def value_many(
             fetcher=fetcher,
             builder=builder,
             macro=macro,
+            fundamentals=fundamentals,
+            sec_fetcher=sec_fetcher,
         )
     if progress:
         progress(n, n, "")
@@ -966,6 +1034,19 @@ def reading(val: Valuation) -> list[str]:
             if lr is not None
             else "Build-out company: the value rests on the long-run margin and the sales-to-capital ratio."
         )
+    fs = val.inputs.get("fundamentals_source") or {}
+    if fs.get("filed"):
+        out.append(
+            f"Financial statements come from SEC filings (latest filed {fs['filed']}); operating income adds back "
+            "impairment charges, as Yahoo does."
+            + (
+                f" The SEC and Yahoo differ by more than 5% on {len(fs['gaps'])} line(s)."
+                if fs.get("gaps")
+                else ""
+            )
+        )
+    elif fs.get("note"):
+        out.append(fs["note"] + "; Yahoo's statements were used.")
     mw = val.macro_weighted
     if math.isfinite(mw):
         reg, w = val.macro["regime"], val.macro["weights"]
