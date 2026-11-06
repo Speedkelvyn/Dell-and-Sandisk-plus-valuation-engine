@@ -664,15 +664,23 @@ def show_valuation(val: S.Valuation, key: str, model_val: S.Valuation | None = N
         prepared = ss("prepared", {})
         stamp = f"{key}_{val.scenario}_{key_of(val.inputs)}"
         if st.button(
-            "Prepare Excel workbook and interactive page",
+            "Prepare Excel workbook, PDF report and interactive page",
             key=f"{key}_prep",
             help="Builds the workbook with live formulas and the one-file interactive page for this valuation.",
         ):
             with st.spinner("Building the files (the workbook takes about ten seconds)…"):
-                prepared[stamp] = (S.workbook_bytes(val), S.page_html(val))
+                prepared[stamp] = (S.workbook_bytes(val), S.page_html(val), _report_pdf(val))
         if stamp in prepared:
-            xlsx, page = prepared[stamp]
-            d1, d2 = st.columns(2)
+            xlsx, page, pdf = prepared[stamp]
+            d1, d2, d3 = st.columns(3)
+            if pdf:
+                d3.download_button(
+                    "Client report (PDF)",
+                    pdf,
+                    f"{val.ticker}_report.pdf",
+                    "application/pdf",
+                    key=f"{key}_dl_pdf",
+                )
             d1.download_button(
                 "Excel workbook (live formulas)",
                 xlsx,
@@ -688,6 +696,14 @@ def show_valuation(val: S.Valuation, key: str, model_val: S.Valuation | None = N
                 key=f"{key}_dl_html",
             )
         st.caption("The workbook and the page include any assumptions you changed.")
+
+
+def _report_pdf(val):
+    """The PDF report, or None when reportlab or matplotlib is not installed (the other files still work)."""
+    try:
+        return S.pdf_bytes(val)
+    except ImportError:
+        return None
 
 
 def format_forecast(t: pd.DataFrame) -> pd.DataFrame:

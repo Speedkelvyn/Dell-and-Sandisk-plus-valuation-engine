@@ -11,8 +11,8 @@ Steps
     2. Build the inputs file with a provenance tag on every input (research.build).
     3. Print the valuation: cost of capital, three DCF scenarios, Monte Carlo, comparables, earnings quality
        and the verdict (run_valuation.report).
-    4. Write, into one folder: the inputs file, the Yahoo snapshot, the interactive page (index.html) and the
-       Excel workbook with live formulas.
+    4. Write, into one folder: the inputs file, the Yahoo snapshot, the interactive page (index.html), the
+       Excel workbook with live formulas and, with --pdf, the client report (PDF).
 
 The default folder, <ticker>/ at the top of the repository, has the same layout as dell/ and sndk/, so the page
 works where it is.
@@ -65,6 +65,7 @@ def value(
     builder=None,
     sec: bool = False,
     sec_fetcher=None,
+    pdf: bool = False,
 ) -> tuple[dict, dict, dict[str, pathlib.Path]]:
     """Run the whole pipeline. Returns (inputs, engine result, files written).
 
@@ -132,6 +133,16 @@ def value(
 
         written["workbook"] = folder / f"{symbol}_valuation.xlsx"
         excel_model.build_workbook(inp, str(written["workbook"]), scenario)
+    if pdf and R["checks"]["ok"]:
+        import report_pdf
+
+        import service
+
+        val = service.Valuation(
+            symbol, scenario, inputs=inp, result=R, source="snapshot" if snapshot else "yahoo"
+        )
+        written["report"] = folder / f"{symbol}_report.pdf"
+        report_pdf.save_pdf(val, written["report"])
     return inp, R, written
 
 
@@ -150,11 +161,25 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="take the financial statements from SEC filings (set SEC_USER_AGENT='Your Name you@example.com')",
     )
+    ap.add_argument(
+        "--pdf",
+        action="store_true",
+        help="also write the client report as a PDF (needs reportlab, matplotlib)",
+    )
     ap.add_argument("--no-excel", action="store_true", help="skip the Excel workbook")
     ap.add_argument("--no-page", action="store_true", help="skip the interactive page")
     a = ap.parse_args(argv)
     _, R, written = value(
-        a.ticker, a.snapshot, a.peers, a.scenario, a.mc, a.out, not a.no_excel, not a.no_page, sec=a.sec
+        a.ticker,
+        a.snapshot,
+        a.peers,
+        a.scenario,
+        a.mc,
+        a.out,
+        not a.no_excel,
+        not a.no_page,
+        sec=a.sec,
+        pdf=a.pdf,
     )
     print("Written:")
     for kind, path in written.items():

@@ -1106,6 +1106,13 @@ def page_html(val: Valuation) -> str:
         return build_page.build(val.inputs, pathlib.Path(d) / "index.html", inline=True)
 
 
+def pdf_bytes(val: Valuation) -> bytes:
+    """The client report as a PDF (needs reportlab and matplotlib)."""
+    import report_pdf
+
+    return report_pdf.build_pdf(val)
+
+
 def inputs_json(val: Valuation) -> str:
     return json.dumps(val.inputs, indent=1)
 

@@ -80,7 +80,7 @@ python engine/value_ticker.py AAPL --peers MSFT GOOGL META   # any listed compan
 python engine/value_ticker.py --snapshot AAPL_yahoo_2026-10-21.json   # rerun on saved data, no network
 ```
 
-`value_ticker.py` writes a folder next to `dell/` and `sndk/` with the inputs file, the raw Yahoo snapshot, the interactive page and the Excel workbook. It exits with status 2 when the data leaves a gap the model needs; the files are still written, so the gap can be filled by hand and the page rebuilt.
+`value_ticker.py` writes a folder next to `dell/` and `sndk/` with the inputs file, the raw Yahoo snapshot, the interactive page and the Excel workbook, and with `--pdf` a four-page client report (verdict, range of value by method, forecast and scenarios, comparables, checks and sources). The app's Save tab offers the same three downloads. It exits with status 2 when the data leaves a gap the model needs; the files are still written, so the gap can be filled by hand and the page rebuilt.
 
 The Python Monte Carlo uses NumPy's random generator rather than the page's, so its median, and with it the blended fair value, can differ from the page by a fraction of a percent (Dell: $278.17 in Python, $278.74 on the page). The DCF, WACC, comparables and regression match exactly.
 
@@ -101,13 +101,14 @@ python engine/web/build_page.py dell/dell_inputs.json dell/index.html
 | `engine/valuation_v2.py` | The engine: segments, margins, FCFF, WACC, DCF, equity bridge, reverse DCF, sensitivity, Monte Carlo, comparables, verdict |
 | `engine/web/` | The same engine in JavaScript (`model.js`), the research module (`research.js`), the page template and its builder |
 | `engine/research.py`, `engine/fetch_yahoo.py` | Turn Yahoo Finance feeds into an inputs file with provenance tags |
+| `engine/report_pdf.py` | The client report as a PDF, for any valuation, including banks, insurers and REITs (needs reportlab and matplotlib) |
 | `engine/edgar.py` | SEC filings (XBRL company facts) turned into the same annual and quarterly series, with quarters rebuilt from year-to-date figures and a cross-check against Yahoo |
 | `engine/beta_daily.py` | Daily CAPM beta against the index, saved into an inputs file |
 | `engine/excel_model.py` | The workbook with live formulas and a scenario switch |
 | `engine/framework.py` | The valuation one step at a time, with every formula shown with its numbers |
 | `engine/run_valuation.py`, `engine/value_ticker.py` | Command-line entry points |
 | `engine/backtest.py` | Runs the valuation as it would have looked on past quarter-ends (only filings already filed, that day's price and yield, no consensus) and compares it with the next 6 and 12 months. Data and results are in `backtest/`; the report is `backtest/REPORT.md` |
-| `engine/tests/` | The Python engine reproduces the published page figures and agrees with the JavaScript engine on both companies; `value_ticker.py` writes every output offline from a saved snapshot; `service.py` moves values the right way for each assumption and isolates a failing ticker; the app runs end to end on the examples; on live snapshots of SNDK, DELL, ON and NBIS (`engine/tests/fixtures/`), plus JPM, TRV and O for the bank, insurer and REIT models, both builders and both engines agree to the last digit, capex fades from today's level, build-outs switch to sales-to-capital, peers are filtered, and values at or below zero never reach the blend; macro and sentiment readings, weights, overlays and caching |
+| `engine/tests/` | The Python engine reproduces the published page figures and agrees with the JavaScript engine on both companies; `value_ticker.py` writes every output offline from a saved snapshot; the PDF report builds for a company, a bank and a REIT;  `service.py` moves values the right way for each assumption and isolates a failing ticker; the app runs end to end on the examples; on live snapshots of SNDK, DELL, ON and NBIS (`engine/tests/fixtures/`), plus JPM, TRV and O for the bank, insurer and REIT models, both builders and both engines agree to the last digit, capex fades from today's level, build-outs switch to sales-to-capital, peers are filtered, and values at or below zero never reach the blend; macro and sentiment readings, weights, overlays and caching |
 
 ## Tests
 
