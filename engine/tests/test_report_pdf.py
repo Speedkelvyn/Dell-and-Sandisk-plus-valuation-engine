@@ -3,7 +3,7 @@
 import gzip
 import json
 import pathlib
-import subprocess
+import re
 import sys
 
 import pytest
@@ -25,35 +25,36 @@ def valuation(t):
     return service.Valuation(t, "Base", inputs=inp, result=v.run_all(inp, "Base", mc_n=300), source="fixture")
 
 
-def text(pdf: bytes, tmp_path) -> str:
-    p = tmp_path / "r.pdf"
-    p.write_bytes(pdf)
-    return subprocess.run(
-        ["pdftotext", "-layout", str(p), "-"], capture_output=True, text=True, check=True
-    ).stdout
+def raw(val) -> bytes:
+    """The PDF with page compression off, so the text can be found in the file without a PDF reader."""
+    return report_pdf.build_pdf(val, compress=False)
 
 
 @pytest.mark.parametrize("t", ["ON", "JPM", "O"])
-def test_report_is_a_four_page_pdf_carrying_the_verdict_and_fair_value(t, tmp_path):
+def test_report_is_a_four_page_pdf_carrying_the_verdict_and_fair_value(t):
     val = valuation(t)
-    pdf = report_pdf.build_pdf(val)
+    pdf = raw(val)
     assert pdf[:5] == b"%PDF-"
-    out = text(pdf, tmp_path)
-    assert out.count("\f") == 4  # four pages
-    assert val.verdict["call"] in out
-    assert f"${val.fair_value:,.2f}" in out and f"${val.price:,.2f}" in out
-    assert "not investment advice" in out
-    assert val.name.split()[0] in out
+    assert len(re.findall(rb"/Type /Page\b(?!s)", pdf)) == 4
+    for needle in (
+        val.verdict["call"],
+        f"${val.fair_value:,.2f}",
+        f"${val.price:,.2f}",
+        "not investment advice",
+        val.name.split()[0],
+    ):
+        assert needle.encode() in pdf, needle
 
 
-def test_report_for_the_published_dell_page_matches_the_engine(tmp_path):
+def test_report_for_the_published_dell_page_matches_the_engine():
     inp = run_valuation.load("dell")
     val = service.Valuation(
         "DELL", "Base", inputs=inp, result=v.run_all(inp, "Base", mc_n=300), source="published"
     )
-    out = text(service.pdf_bytes(val), tmp_path)
+    pdf = raw(val)
+    assert service.pdf_bytes(val)[:5] == b"%PDF-"
     for k in ("Bear", "Base", "Bull"):
-        assert f"${val.result['scen3'][k]['perShare']:,.2f}" in out
+        assert f"${val.result['scen3'][k]['perShare']:,.2f}".encode() in pdf
 
 
 def test_report_refuses_a_valuation_that_did_not_run():

@@ -475,8 +475,8 @@ def _footer(canvas, doc):
     canvas.restoreState()
 
 
-def build_pdf(val) -> bytes:
-    """The report for one service.Valuation as PDF bytes."""
+def build_pdf(val, compress: bool = True) -> bytes:
+    """The report for one service.Valuation as PDF bytes (compress=False keeps the text readable in the raw file)."""
     if not val.ok:
         raise ValueError(f"Cannot report on {val.ticker}: {val.note}")
     st = _styles()
@@ -490,6 +490,7 @@ def build_pdf(val) -> bytes:
         bottomMargin=0.8 * inch,
         title=f"{val.name} ({val.ticker}) valuation report",
         author="Valuation engine",
+        pageCompression=1 if compress else 0,
     )
     story = []
     for i, page in enumerate((page_summary, page_forecast, page_comps, page_checks)):
