@@ -476,6 +476,8 @@ def report(recs, stats6, stats12, start, end) -> str:
     L += [
         "## Read this before relying on it",
         "",
+        "* The Monte Carlo band is stretched by MC_WIDEN = 2.1, a factor chosen on this same sample (before the stretch the band held the later price 49% of the time), so the coverage shown above is in-sample by construction. Out-of-sample coverage is unknown.",
+        "* P(value > price) is still not a skilled forecast of beating the market (its Brier score is above the base rate's): the band is now honest about the width of outcomes, not about their direction.",
         "* Quarterly dates with 12-month windows overlap, so the independent sample is a fraction of the row count.",
         "* The universe is large, liquid US companies that exist today, so it carries survivorship bias and covers one market regime.",
         "* No consensus, peer comparables or news were available point-in-time. The live tool uses them, so this tests the model on trailing facts alone.",

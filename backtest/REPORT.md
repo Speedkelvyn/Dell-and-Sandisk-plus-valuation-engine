@@ -27,15 +27,15 @@ Monte Carlo P(value > price) against how often the stock beat the market:
 
 | Predicted band | Valuations | Mean predicted | Observed |
 |---|---|---|---|
-| 0% to 20% | 180 | 5% | 45% |
-| 20% to 40% | 60 | 28% | 53% |
-| 40% to 60% | 69 | 51% | 52% |
-| 60% to 80% | 84 | 70% | 62% |
-| 80% to 100% | 194 | 93% | 47% |
+| 0% to 20% | 97 | 8% | 40% |
+| 20% to 40% | 122 | 30% | 53% |
+| 40% to 60% | 131 | 51% | 54% |
+| 60% to 80% | 145 | 70% | 54% |
+| 80% to 100% | 92 | 89% | 42% |
 
-Brier score 0.378 against 0.250 for always forecasting the base rate (lower is better).
+Brier score 0.318 against 0.250 for always forecasting the base rate (lower is better).
 
-The Monte Carlo 10th to 90th percentile band is meant to hold the outcome 80% of the time. The price 12 months later (dividends reinvested) landed inside it 51% of the time, below it 17% and above it 32% (587 valuations). The model's band implies a standard deviation of about 28% in log value; the realised gap between the later price and fair value (robust estimate) had 58%, so the band would need to be about 2.0 times wider to be calibrated.
+The Monte Carlo 10th to 90th percentile band is meant to hold the outcome 80% of the time. The price 12 months later (dividends reinvested) landed inside it 81% of the time, below it 5% and above it 13% (587 valuations). The model's band implies a standard deviation of about 59% in log value; the realised gap between the later price and fair value (robust estimate) had 58%, so the band would need to be about 1.0 times wider to be calibrated.
 
 Same test for simple signals computed from the same data:
 
@@ -70,15 +70,15 @@ Monte Carlo P(value > price) against how often the stock beat the market:
 
 | Predicted band | Valuations | Mean predicted | Observed |
 |---|---|---|---|
-| 0% to 20% | 180 | 5% | 47% |
-| 20% to 40% | 60 | 28% | 52% |
-| 40% to 60% | 69 | 51% | 59% |
-| 60% to 80% | 84 | 70% | 51% |
-| 80% to 100% | 194 | 93% | 48% |
+| 0% to 20% | 97 | 8% | 43% |
+| 20% to 40% | 122 | 30% | 52% |
+| 40% to 60% | 131 | 51% | 53% |
+| 60% to 80% | 145 | 70% | 52% |
+| 80% to 100% | 92 | 89% | 47% |
 
-Brier score 0.382 against 0.250 for always forecasting the base rate (lower is better).
+Brier score 0.319 against 0.250 for always forecasting the base rate (lower is better).
 
-The Monte Carlo 10th to 90th percentile band is meant to hold the outcome 80% of the time. The price 6 months later (dividends reinvested) landed inside it 52% of the time, below it 20% and above it 28% (587 valuations). The model's band implies a standard deviation of about 28% in log value; the realised gap between the later price and fair value (robust estimate) had 56%, so the band would need to be about 2.0 times wider to be calibrated.
+The Monte Carlo 10th to 90th percentile band is meant to hold the outcome 80% of the time. The price 6 months later (dividends reinvested) landed inside it 84% of the time, below it 5% and above it 11% (587 valuations). The model's band implies a standard deviation of about 59% in log value; the realised gap between the later price and fair value (robust estimate) had 56%, so the band would need to be about 0.9 times wider to be calibrated.
 
 Same test for simple signals computed from the same data:
 
@@ -93,6 +93,8 @@ By model: fcff n=455, IC -0.053; excess_return n=88, IC +0.192; ddm n=44, IC -0.
 
 ## Read this before relying on it
 
+* The Monte Carlo band is stretched by MC_WIDEN = 2.1, a factor chosen on this same sample (before the stretch the band held the later price 49% of the time), so the coverage shown above is in-sample by construction. Out-of-sample coverage is unknown.
+* P(value > price) is still not a skilled forecast of beating the market (its Brier score is above the base rate's): the band is now honest about the width of outcomes, not about their direction.
 * Quarterly dates with 12-month windows overlap, so the independent sample is a fraction of the row count.
 * The universe is large, liquid US companies that exist today, so it carries survivorship bias and covers one market regime.
 * No consensus, peer comparables or news were available point-in-time. The live tool uses them, so this tests the model on trailing facts alone.
