@@ -1417,11 +1417,11 @@
       regression: reg.implied,
     });
     if (reg.weak && isFinite(reg.r2))
-      ((v.warnings = v.warnings.filter((w) => w.path !== "verdict.weights.regression")),
+      (v.warnings = v.warnings.filter((w) => w.path !== "verdict.weights.regression")),
         v.warnings.push({
           path: "relative.reg_min_r2",
           msg: `Peer regression R² ${reg.r2.toFixed(2)} is below ${reg.minR2.toFixed(2)}; it is shown but left out of the blend`,
-        }));
+        });
     return { checks: Q, W, base, scen3, rel, reg, mc, verdict: v, pvgo: pvgo(inp) };
   }
 
