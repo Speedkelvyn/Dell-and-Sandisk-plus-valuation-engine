@@ -488,11 +488,12 @@
           return i > 0 ? v / ((cseA[i][1] + cseA[i - 1][1]) / 2) : null;
         })
         .filter((x) => x != null);
-      const rh = finCalc.roeHist,
-        roeAvg = rh.length ? rh.reduce((a, b) => a + b, 0) / rh.length : finCalc.roeTTM;
+      const rh = finCalc.roeHist;
       // year-1 ROE from consensus EPS where available
       finCalc.roe1 = epsY1 != null && shares && finCalc.bv0 ? (epsY1 * shares) / finCalc.bv0 : finCalc.roeTTM;
-      finCalc.roeLR = finCalc.roeTTM != null && roeAvg != null ? (finCalc.roeTTM + roeAvg) / 2 : null;
+      // trailing year counts as one more observation beside the annual history (see research.py)
+      finCalc.roeLR =
+        finCalc.roeTTM != null ? [...rh, finCalc.roeTTM].reduce((a, b) => a + b, 0) / (rh.length + 1) : null;
       finCalc.roeMin = rh.length ? Math.min(...rh, finCalc.roeTTM ?? Infinity) : finCalc.roeTTM;
       // total payout (dividends + buybacks) / net income to common, 3-year average
       const pay = niA

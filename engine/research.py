@@ -586,13 +586,12 @@ def build(f):
             if i > 0:
                 rh.append(val / ((cse_a[i][1] + cse_a[i - 1][1]) / 2))
         fc["roeHist"] = rh
-        roe_avg = _jsum(rh) / len(rh) if rh else fc["roeTTM"]
         fc["roe1"] = (
             eps_y1 * shares / fc["bv0"] if eps_y1 is not None and shares and fc["bv0"] else fc["roeTTM"]
         )
-        fc["roeLR"] = (
-            (fc["roeTTM"] + roe_avg) / 2 if fc["roeTTM"] is not None and roe_avg is not None else None
-        )
+        # Long-run ROE: the trailing year counts as one more observation beside the annual history, so one
+        # strong year (an insurer's light-catastrophe year, a bank's reserve release) cannot set the whole path.
+        fc["roeLR"] = _jsum([*rh, fc["roeTTM"]]) / (len(rh) + 1) if fc["roeTTM"] is not None else None
         fc["roeMin"] = (
             min([*rh, fc["roeTTM"] if fc["roeTTM"] is not None else math.inf]) if rh else fc["roeTTM"]
         )
