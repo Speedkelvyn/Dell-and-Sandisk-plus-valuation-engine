@@ -20,7 +20,8 @@ Rank correlation of upside to fair value with the later excess return: -0.015 po
 | Verdict | Valuations | Mean excess return | Beat the market |
 |---|---|---|---|
 | FAIRLY VALUED | 276 | -0.1% | 49% |
-| OVERVALUED | 1102 | +2.8% | 44% |
+| NO CALL | 4 | -9.7% | 25% |
+| OVERVALUED | 1098 | +2.8% | 44% |
 | UNDERVALUED | 1142 | -0.7% | 45% |
 
 Monte Carlo P(value > price) against how often the stock beat the market:
@@ -63,7 +64,8 @@ Rank correlation of upside to fair value with the later excess return: +0.019 po
 | Verdict | Valuations | Mean excess return | Beat the market |
 |---|---|---|---|
 | FAIRLY VALUED | 276 | +1.4% | 52% |
-| OVERVALUED | 1102 | +0.1% | 46% |
+| NO CALL | 4 | +9.1% | 50% |
+| OVERVALUED | 1098 | +0.1% | 46% |
 | UNDERVALUED | 1142 | +0.2% | 46% |
 
 Monte Carlo P(value > price) against how often the stock beat the market:
