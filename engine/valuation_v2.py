@@ -680,7 +680,12 @@ def relative(inp, tickers=None, how=None, weights=None):
     P = peer_frame(inp, tickers)
     m, sh = inp["market"], diluted_shares(inp)
     td = m.get("total_debt_incl_dfs")
-    nd = td + inp["bridge"]["leases"] - inp["bridge"]["cash"] if _ok(td) else float("nan")
+    br = inp["bridge"]
+    nd = (
+        td + br["leases"] - br["cash"]
+        if _ok(td) and _ok(br.get("leases")) and _ok(br.get("cash"))
+        else float("nan")
+    )
     ev = m["price"] * sh + nd
     nan = float("nan")
     fin = inp.get("fin") or {}
@@ -791,6 +796,17 @@ def regression(inp, dell_growth, tickers=None):
     P = peer_frame(inp, tickers or list(inp["peers"]["rows"]))
     P = P[(P["eps_g3y"].astype(float) > 0) & (P["pe_fwd"].astype(float) > 0)]
     x, y = P["eps_g3y"].astype(float).values, P["pe_fwd"].astype(float).values
+    if x.size < 3:  # too few comparable peers (or none): the regression is left out, as for banks
+        nan = float("nan")
+        return {
+            "a": nan,
+            "b": nan,
+            "r2": nan,
+            "n": x.size,
+            "dellGrowth": dell_growth,
+            "pe": nan,
+            "implied": nan,
+        }
     b, a = np.polyfit(x, y, 1)
     r2 = np.corrcoef(x, y)[0, 1] ** 2
     pe = a + b * dell_growth
@@ -1264,6 +1280,9 @@ def verdict(inp, parts):
 
 def pvgo(inp):
     ke, e1, p = wacc(inp)["ke"], inp["market"]["eps_ntm"], inp["market"]["price"]
+    if not _ok(e1):  # no consensus EPS: the split between assets in place and growth cannot be drawn
+        nan = float("nan")
+        return {"noGrowth": nan, "pvgo": nan, "share": nan}
     return {"noGrowth": e1 / ke, "pvgo": p - e1 / ke, "share": (p - e1 / ke) / p}
 
 

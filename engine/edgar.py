@@ -227,6 +227,8 @@ def parse(facts, since="2020-12-31"):
         if q:
             quarterly[name] = _sorted(q, sign)
     _special(facts, annual, quarterly, since)
+    for out in (annual, quarterly):
+        _operating_fallback(out)
     for target, tgt_name in ((annual, "a"), (quarterly, "q")):
         _derived(facts, target, since, annual_only=(tgt_name == "a"), fy_ends=fy_ends)
     filed = max(
@@ -240,6 +242,16 @@ def parse(facts, since="2020-12-31"):
         "filed": filed,
         "name": facts.get("name"),
     }
+
+
+def _operating_fallback(out):
+    """Some large filers (Exxon, Chevron, Pfizer, Merck, Nike) never tag an operating income. Yahoo's figure for them is
+    income before tax plus interest expense, so the same is built here; OperatingIncomeReported stays absent so the
+    page can tell the figure is derived."""
+    if out.get("OperatingIncome") or not out.get("PretaxIncome"):
+        return
+    interest = {d: abs(v) for d, v in out.get("InterestExpense") or []}
+    out["OperatingIncome"] = [[d, v + interest.get(d, 0.0)] for d, v in out["PretaxIncome"]]
 
 
 def _special(facts, annual, quarterly, since):

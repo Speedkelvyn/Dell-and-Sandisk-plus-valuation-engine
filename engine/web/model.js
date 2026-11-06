@@ -822,7 +822,10 @@
     const m = inp.market,
       sh = dilutedShares(inp);
     // EV-based: Dell EV on the same basis as data vendors (all debt incl. DFS, less cash)
-    const netDebtAll = m.total_debt_incl_dfs + inp.bridge.leases - inp.bridge.cash;
+    const netDebtAll =
+      okNum(m.total_debt_incl_dfs) && okNum(inp.bridge.leases) && okNum(inp.bridge.cash)
+        ? m.total_debt_incl_dfs + inp.bridge.leases - inp.bridge.cash
+        : NaN;
     const evDell = m.price * sh + netDebtAll;
     const bvps = inp.fin && okNum(inp.fin.bv0) ? inp.fin.bv0 / sh : null,
       dps0 = inp.fin ? inp.fin.dps0 : null;
@@ -890,6 +893,7 @@
     const x = P.map((p) => p.eps_g3y),
       y = P.map((p) => p.pe_fwd),
       n = x.length;
+    if (n < 3) return { a: NaN, b: NaN, r2: NaN, n, points: [], dellGrowth, pe: NaN, implied: NaN };
     const mx = sum(x) / n,
       my = sum(y) / n;
     let sxy = 0,
@@ -1387,6 +1391,7 @@
     const ke = wacc(inp).ke,
       e1 = inp.market.eps_ntm,
       p = inp.market.price;
+    if (!okNum(e1)) return { noGrowth: NaN, pvgo: NaN, share: NaN };
     return { noGrowth: e1 / ke, pvgo: p - e1 / ke, share: (p - e1 / ke) / p };
   }
 
@@ -1412,11 +1417,11 @@
       regression: reg.implied,
     });
     if (reg.weak && isFinite(reg.r2))
-      (v.warnings = v.warnings.filter((w) => w.path !== "verdict.weights.regression")),
+      ((v.warnings = v.warnings.filter((w) => w.path !== "verdict.weights.regression")),
         v.warnings.push({
           path: "relative.reg_min_r2",
           msg: `Peer regression R² ${reg.r2.toFixed(2)} is below ${reg.minR2.toFixed(2)}; it is shown but left out of the blend`,
-        });
+        }));
     return { checks: Q, W, base, scen3, rel, reg, mc, verdict: v, pvgo: pvgo(inp) };
   }
 
