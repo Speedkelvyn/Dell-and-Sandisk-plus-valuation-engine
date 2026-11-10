@@ -89,14 +89,38 @@ FIELDS = {
         "flow",
         USD,
         -1,
-        ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets"],
+        [
+            "PaymentsToAcquirePropertyPlantAndEquipment",
+            "PaymentsToAcquireProductiveAssets",
+            "PaymentsToAcquireOtherPropertyPlantAndEquipment",  # Eli Lilly
+            "PaymentsToAcquireOilAndGasPropertyAndEquipment",  # EOG
+        ],
     ),
-    "CashDividendsPaid": ("flow", USD, -1, ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock"]),
+    "CashDividendsPaid": (
+        "flow",
+        USD,
+        -1,
+        [
+            "PaymentsOfDividends",
+            "PaymentsOfDividendsCommonStock",
+            "DividendsCommonStockCash",
+        ],  # last: Public Storage
+    ),
     "RepurchaseOfCapitalStock": ("flow", USD, -1, ["PaymentsForRepurchaseOfCommonStock"]),
     "AccountsReceivable": ("instant", USD, 1, ["AccountsReceivableNetCurrent"]),
     "AccountsPayable": ("instant", USD, 1, ["AccountsPayableCurrent"]),
     "Inventory": ("instant", USD, 1, ["InventoryNet"]),
-    "CashAndCashEquivalents": ("instant", USD, 1, ["CashAndCashEquivalentsAtCarryingValue"]),
+    "CashAndCashEquivalents": (
+        "instant",
+        USD,
+        1,
+        [
+            "CashAndCashEquivalentsAtCarryingValue",
+            "CashAndCashEquivalentsAtCarryingValueIncludingDiscontinuedOperations",  # Mondelez
+            "Cash",  # Schlumberger
+            "CashCashEquivalentsAndShortTermInvestments",  # Caterpillar before 2021; includes short-term investments
+        ],
+    ),
     "TotalAssets": ("instant", USD, 1, ["Assets"]),
     "CommonStockEquity": ("instant", USD, 1, ["StockholdersEquity"]),
     "MinorityInterest": ("instant", USD, 1, ["MinorityInterest"]),
@@ -246,6 +270,8 @@ def parse(facts, since="2020-12-31"):
     for name, (kind, unit, sign, tags) in FIELDS.items():
         if kind == "instant":
             ser = _by_tags(facts, tags, unit, lambda r: r[1] if r[1] >= since else None)
+            if unit == SHARES:  # a share count of zero is a filing placeholder (Cigna 2016-17), not a figure
+                ser = {e: v for e, v in ser.items() if v > 0}
             if name == "OrdinarySharesNumber" and not ser:
                 last = ((facts.get("dei") or {}).get("EntityCommonStockSharesOutstanding") or [None])[-1]
                 if last:

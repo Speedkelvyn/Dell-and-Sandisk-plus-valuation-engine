@@ -145,3 +145,20 @@ def test_band_coverage_counts_only_named_tickers_with_an_outcome():
     ]
     assert B.band_coverage(recs, {"A"}) == (2, 0.5)
     assert B.band_coverage(recs, {"Z"})[0] == 0
+
+
+@pytest.mark.skipif(not (DATA / "GS_edgar.json.gz").exists(), reason="backtest data not present")
+@pytest.mark.parametrize(("t", "asof"), [("GS", "2020-06-30"), ("MS", "2020-06-30"), ("CI", "2020-06-30")])
+def test_filers_that_used_to_crash_now_build_and_value(t, asof):
+    """Goldman Sachs and Morgan Stanley tag no revenue line; Cigna filed a share count of zero for 2016-17. Each
+    crashed the build (fromisoformat on None, division by zero) and dropped out of the backtest."""
+    facts, px = B._read(DATA / f"{t}_edgar.json.gz"), B.Prices(B._read(DATA / f"{t}_px.json.gz"))
+    idx, tnx = B.Prices(B._read(DATA / "GSPC_px.json.gz")), B.Prices(B._read(DATA / "TNX_px.json.gz"))
+    inp = RP.build(B.feeds_at(t, facts, px, idx, tnx, asof))
+    out = v.run_all(inp, "Base", mc_n=50)
+    assert not out["checks"].get("blocking")
+
+
+def test_engine_tolerates_a_missing_capex_fade_and_missing_debt_lines():
+    assert v._debt({"bridge": {"core_debt": None, "leases": None}}) == 0.0
+    assert v._debt({"bridge": {"core_debt": 5.0, "leases": 1.5}}) == 6.5

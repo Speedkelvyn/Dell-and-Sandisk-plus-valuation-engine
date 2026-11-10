@@ -300,7 +300,12 @@ def build(f):
     dilution = (q_dil - q_ord) / M_ if q_dil and q_ord and q_dil > q_ord else 0
 
     rev0 = last(A.get("TotalRevenue")) / M_ if num(last(A.get("TotalRevenue"))) is not None else None
-    last_fye = last_date(A.get("TotalRevenue"))
+    # a bank or insurer may tag no revenue line; its fiscal year end is then read from net income or total assets
+    last_fye = (
+        last_date(A.get("TotalRevenue")) or last_date(A.get("NetIncome")) or last_date(A.get("TotalAssets"))
+    )
+    if not last_fye:
+        raise ValueError("No annual report in the statements: the fiscal year end cannot be dated")
     nfy = raw(ks.get("nextFiscalYearEnd"))
     next_fye = _iso(nfy) if nfy else None
     if not next_fye or next_fye <= today:
@@ -325,7 +330,7 @@ def build(f):
     eps_y2g = eps_y1 * (1 + g1eps) if eps_y1 is not None and g1eps is not None else None
     eps_conflict = eps_y2avg is not None and eps_y2g is not None and abs(eps_y2avg / eps_y2g - 1) > 0.03
     TR = A.get("TotalRevenue")
-    hist_g = at(TR, 1) / at(TR, 2) - 1 if TR and len(TR) >= 2 else None
+    hist_g = at(TR, 1) / at(TR, 2) - 1 if TR and len(TR) >= 2 and (at(TR, 2) or 0) > 0 else None
     if not rev_y1:
         warn(
             "y1_segments.total",
@@ -511,7 +516,9 @@ def build(f):
             f"Latest quarter annualised is {fx(ramp, 2)}x trailing revenue; trailing EV/EBITDA and EV/Sales understate the business, so comps use forward P/E only",
         )
     sh = A.get("OrdinarySharesNumber") or []
-    buyback = max(0, 1 - (sh[-1][1] / sh[-3][1]) ** 0.5) if len(sh) >= 3 else 0
+    buyback = (
+        max(0, 1 - (sh[-1][1] / sh[-3][1]) ** 0.5) if len(sh) >= 3 and sh[-3][1] > 0 and sh[-1][1] > 0 else 0
+    )
 
     rf = f["tnx"] / 100 if num(f.get("tnx")) is not None else None
     erp = f.get("erp") if f.get("erp") is not None else 0.0423

@@ -64,6 +64,13 @@ def diluted_shares(inp):
     return inp["market"]["shares_basic"] + inp["market"]["dilution"]
 
 
+def _debt(inp):
+    """Debt plus leases. A bank or insurer may carry neither line (its model does not use them); JavaScript adds
+    null as zero, so the same is done here."""
+    b = inp["bridge"]
+    return (b.get("core_debt") or 0.0) + (b.get("leases") or 0.0)
+
+
 def bottom_up_beta(inp):
     t = inp["capital"]["tax_marginal"]
     cols = inp["peers"]["columns"]
@@ -76,7 +83,7 @@ def bottom_up_beta(inp):
     ok = [x for x in bu if x is not None]
     med = float(np.median(ok)) if ok else float("nan")
     E = inp["market"]["price"] * diluted_shares(inp)
-    D = inp["bridge"]["core_debt"] + inp["bridge"]["leases"]
+    D = _debt(inp)
     return {"unlevered": bu, "median": med, "relevered": med * (1 + (1 - t) * D / E)}
 
 
@@ -162,7 +169,7 @@ def wacc(inp):
     mrp = market_risk_premium(c)
     ke = c["rf"] + b["chosen"] * mrp + c.get("crp", 0.0) + c.get("size_premium", 0.0)
     E = inp["market"]["price"] * diluted_shares(inp)
-    D = inp["bridge"]["core_debt"] + inp["bridge"]["leases"]
+    D = _debt(inp)
     we, wd = E / (E + D), D / (E + D)
     kd = c["kd_pretax"] * (1 - c["tax_marginal"])
     return {
@@ -206,7 +213,8 @@ def project(inp, scen):
     mp = {k: margin_path(*v) for k, v in scen["margins"].items()}
     taxp = margin_path(op["tax0"], op["tax_lr"])
     # capex and D&A fade from today's share of sales to a long-run share, like margins (absent: held flat)
-    capp = margin_path(op["capex_pct"], op.get("capex_lr_pct", op["capex_pct"]))
+    capex_lr = op.get("capex_lr_pct")
+    capp = margin_path(op["capex_pct"], op["capex_pct"] if capex_lr is None else capex_lr)
     dap = margin_path(op["da_pct"], op.get("da_lr_pct", op["da_pct"]))
     # build-out companies: net reinvestment = next year's revenue added ÷ sales-to-capital, replacing capex − D&A + ΔNWC
     s2c = op.get("sales_to_capital")

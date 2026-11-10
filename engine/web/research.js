@@ -193,7 +193,9 @@
     const dilution = qDil && qOrd && qDil > qOrd ? (qDil - qOrd) / M_ : 0;
 
     const rev0 = num(last(A.TotalRevenue)) != null ? last(A.TotalRevenue) / M_ : null;
-    const lastFYE = lastDate(A.TotalRevenue);
+    // a bank or insurer may tag no revenue line; its fiscal year end is then read from net income or total assets
+    const lastFYE = lastDate(A.TotalRevenue) || lastDate(A.NetIncome) || lastDate(A.TotalAssets);
+    if (!lastFYE) throw new Error("No annual report in the statements: the fiscal year end cannot be dated");
     let nextFYE = raw(ks.nextFiscalYearEnd)
       ? new Date(raw(ks.nextFiscalYearEnd) * 1000).toISOString().slice(0, 10)
       : null;
@@ -227,7 +229,9 @@
     const epsY2fromG = epsY1 != null && g1eps != null ? epsY1 * (1 + g1eps) : null;
     const epsConflict = epsY2avg != null && epsY2fromG != null && Math.abs(epsY2avg / epsY2fromG - 1) > 0.03;
     const histG =
-      A.TotalRevenue && A.TotalRevenue.length >= 2 ? at(A.TotalRevenue, 1) / at(A.TotalRevenue, 2) - 1 : null;
+      A.TotalRevenue && A.TotalRevenue.length >= 2 && at(A.TotalRevenue, 2) > 0
+        ? at(A.TotalRevenue, 1) / at(A.TotalRevenue, 2) - 1
+        : null;
     if (!revY1)
       warn(
         "y1_segments.total",
@@ -398,7 +402,9 @@
       );
     const sh = A.OrdinarySharesNumber || [];
     const buyback =
-      sh.length >= 3 ? Math.max(0, 1 - Math.pow(sh[sh.length - 1][1] / sh[sh.length - 3][1], 1 / 2)) : 0;
+      sh.length >= 3 && sh[sh.length - 3][1] > 0 && sh[sh.length - 1][1] > 0
+        ? Math.max(0, 1 - Math.pow(sh[sh.length - 1][1] / sh[sh.length - 3][1], 1 / 2))
+        : 0;
 
     // cost of capital
     const rf = num(f.tnx) != null ? f.tnx / 100 : null;
