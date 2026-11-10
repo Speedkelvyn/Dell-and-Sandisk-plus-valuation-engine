@@ -47,6 +47,36 @@ Base value by mid-cycle margin: 10% $757, 15% $833, 20% $908, 28% $1,030, 35% $1
 Base value by extra boom years beyond the Street's two: +1 $1,198, +2 $1,351, +3 $1,490.
 Base value by terminal beta: 1.2 $1,116, 1.6 $1,030, 2.3 $932.
 
+## Memory-cycle history check
+
+Annual operating margins from SEC filings, in `MEMORY_CYCLE_HISTORY.csv`: Micron FY2009 to FY2026 (18 years, five downturns) and Western Digital FY2017 to FY2026. Western Digital held SanDisk until the 2025 split, so its margins mix flash and hard drives.
+
+| | Micron FY09 to FY25 (17 years) | Western Digital FY17 to FY25 (9 years) |
+|---|---|---|
+| Median operating margin | 18.5% | 7.2% |
+| Mean | 11.7% | 6.6% |
+| 25th to 75th percentile | 2.6% to 26.1% | 0.5% to 12.7% |
+| Worst year | -37% (FY23) | -9% (FY23) |
+| Best year before FY26 | 49% (FY18) | 25% (FY25) |
+
+Micron's lowest year in each of its five downturns: -35% (FY09), -7% (FY12), 1% (FY16), 14% (FY20), -37% (FY23). Micron's latest year, FY26, was 75% on $133B of revenue, so a margin in the 70s has now happened once.
+
+Against Base:
+* The 15% trough margin is above the low point of every one of Micron's five downturns.
+* The 28% mid-cycle margin is above Micron's 75th percentile (26%), not its median.
+
+Base value with Micron's history in place of my judgement:
+
+| Mid-cycle margin | Trough margin | Value per share | vs $842.61 |
+|---|---|---|---|
+| 28% (Base) | 15% | $1,030 | +22% |
+| 18.5% (Micron median) | 15% | $886 | +5% |
+| 11.7% (Micron mean) | 15% | $783 | -7% |
+| 18.5% | -37% (Micron's worst year) | $634 | -25% |
+| 11.7% | -37% | $531 | -37% |
+
+The price sits between the first two history rows, so it is paying for roughly an average memory cycle, not a better one. Base's premium over that is the case that the industry has changed (three DRAM and five NAND suppliers, AI demand), which the FY26 numbers support but which has one year of evidence. This history is not yet in the scenarios or the Monte Carlo distributions; the Bear case (trough -2%, mid-cycle 15%) is the closest to it.
+
 ## Against the main model
 
 | | Main model | Cycle model |
@@ -60,7 +90,7 @@ The gap in Base is the cycle. The main model keeps a 41% margin for the long run
 
 ## Read this before relying on it
 
-* The downturn depth, trough margin and mid-cycle margin are my judgement, not data. They are the inputs that decide the answer; edit `SCENARIOS` and `DISTS` in `engine/value_sndk_cycle.py`.
+* The downturn depth, trough margin and mid-cycle margin are my judgement, not data, and Base is more generous than Micron's history on both (see the history check above). They are the inputs that decide the answer; edit `SCENARIOS` and `DISTS` in `engine/value_sndk_cycle.py`.
 * No point-in-time test of this method has been run. The backtest in `backtest/REPORT.md` covers the main model only, and it found no skill in upside to fair value.
 * A margin of 80% has no precedent in memory. Consensus carries it through FY28; the downturn is assumed to start in FY29, and an earlier start is not modelled.
 * The notebook it draws on is a teaching example. The tests reproduce its published Chipotle valuation (operating assets $39.96B, equity $37.79B) to check the arithmetic, not to endorse its inputs.
