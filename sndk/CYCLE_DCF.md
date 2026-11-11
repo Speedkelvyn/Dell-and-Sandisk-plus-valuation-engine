@@ -97,6 +97,29 @@ Method: at each fiscal year with at least five years of history, forecast the av
 
 Two things follow. No rule that reads the company's own history beat a flat number, which says 12 points of data cannot rank forecasting rules; the Base mid-cycle margin cannot be defended or refuted by this sample. And after the three Micron years that began above 30% (FY18 at 49%, FY19 at 32%, FY22 at 32%), the next four years averaged 25%, 8% and 17%. Base's four years after its own peak (FY29 to FY32) average 27%, above all three of those episodes, which is the same call as the 22% mid-cycle margin: more generous than the history, justified only by the contract and AI-demand argument.
 
+## Point-in-time test on Micron
+
+`engine/backtest_cycle.py` applies a fixed rule at 8 origins (15 November, 2017 to 2024) using only what was filed and known by then. The rule reads where Micron's latest annual margin sits in its own history to that date: a peak (top quartile) gets one more year, a three-year downturn to the 25th-percentile margin, then recovery to the median; a trough gets recovery to the median; anything between glides to the median. Every other input comes from the filings or is fixed once, with no tuning to the outcome. A baseline holds the median margin with no cycle at all.
+
+| Origin | Latest FY margin | Price | Cycle value | vs price | No-cycle value | vs price | Return over 12 months | 24 | 36 |
+|---|---|---|---|---|---|---|---|---|---|
+| Nov 2017 | 29% | $45 | $12 | -75% | $14 | -69% | -12% | 5% | 28% |
+| Nov 2018 | 49% | $40 | $49 | +22% | $51 | +28% | 20% | 45% | 93% |
+| Nov 2019 | 32% | $48 | $49 | +3% | $70 | +46% | 21% | 62% | 33% |
+| Nov 2020 | 32% | $58 | $62 | +7% | $88 | +52% | 33% | 10% | 34% |
+| Nov 2021 | 14% | $77 | $52 | -32% | $53 | -31% | -17% | 2% | 28% |
+| Nov 2022 | 23% | $63 | $37 | -42% | $54 | -15% | 23% | 59% | 298% |
+| Nov 2023 | -37% | $77 | $6 | -93% | $17 | -78% | 29% | 223% | n/a |
+| Nov 2024 | 5% | $96 | $21 | -78% | $25 | -74% | 157% | n/a | n/a |
+
+What it shows:
+* The rule valued Micron below its price at 5 of 8 origins (36% below on average across all eight), while the stock rose over the next 36 months at all six origins that have a 36-month result. A method that normalizes to a company's own past margins is biased low for a business whose economics improved, and Micron's did (three DRAM makers after the 2009 to 2013 failures, then AI). That is the same point the Base margins make: the history is the floor of the argument, not the answer.
+* The cycle value was no better than the no-cycle baseline. Its rank correlation with later returns is -0.29 at 12 months, -0.21 at 24 and +0.43 at 36; the baseline's is -0.07, -0.04 and +0.49. With 8 origins, all of them overlapping, none of these differ from zero.
+* At Micron's FY18 peak (49% margin) the price had already fallen to $40 from a 2018 high near $64, so the origin did not test whether the method sells a peak. The test that would is an origin at the price top, and a quarterly series needs the refreshed filings.
+* The valuation levels depend on inputs I fixed once (beta 1.4 falling to 1.0, equity premium 4.5%, terminal ROIC 3 points over WACC). The ordering across origins matters more than the dollar values.
+
+This does not validate the SNDK Base. It says a purely historical normalization would have missed most of Micron's gains, which is why Base sits above the Micron median, and that the method has no demonstrated skill at timing. The SNDK output is a statement of what the price implies under stated assumptions.
+
 ## Against the main model
 
 | | Main model | Cycle model |
@@ -111,7 +134,7 @@ The gap in Base is the cycle. The main model keeps a 41% margin for the long run
 ## Read this before relying on it
 
 * The downturn depth, trough margin and mid-cycle margin are my judgement, not data, and Base sits above Micron's median on both the trough and the mid-cycle margin, with the contract and AI-demand reasoning given under Assumptions. They are the inputs that decide the answer; edit `SCENARIOS` and `DISTS` in `engine/value_sndk_cycle.py`.
-* No point-in-time test of this method has been run. The backtest in `backtest/REPORT.md` covers the main model only, and it found no skill in upside to fair value.
+* The point-in-time test of this method (Micron, 8 origins above) found no skill and a downward bias when margins are normalized to the company's own history. The backtest in `backtest/REPORT.md` covers the main model only, and it found no skill in upside to fair value.
 * A margin of 80% has no precedent in memory. Consensus carries it through FY28; the downturn is assumed to start in FY29, and an earlier start is not modelled.
 * The notebook it draws on is a teaching example. The tests reproduce its published Chipotle valuation (operating assets $39.96B, equity $37.79B) to check the arithmetic, not to endorse its inputs.
 * Opening invested capital is net working capital plus PP&E from the FY26 filing, $9.5B; goodwill and intangibles are not included, which makes the early ROIC figures high.
