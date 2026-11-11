@@ -162,3 +162,19 @@ def test_filers_that_used_to_crash_now_build_and_value(t, asof):
 def test_engine_tolerates_a_missing_capex_fade_and_missing_debt_lines():
     assert v._debt({"bridge": {"core_debt": None, "leases": None}}) == 0.0
     assert v._debt({"bridge": {"core_debt": 5.0, "leases": 1.5}}) == 6.5
+
+
+def test_without_consensus_next_years_growth_is_pulled_toward_the_median_not_carried_forward():
+    """AAPL grew 33% in FY21; with no analyst estimates the engine should expect 6.5% + 25% of the gap, not 33%."""
+    d = DATA
+    if not (d / "AAPL_edgar.json.gz").exists():
+        pytest.skip("backtest data not present")
+    facts = B._read(d / "AAPL_edgar.json.gz")
+    px, idx, tnx = (B.Prices(B._read(d / f"{n}_px.json.gz")) for n in ("AAPL", "GSPC", "TNX"))
+    f = B.feeds_at("AAPL", facts, px, idx, tnx, "2022-06-30")
+    inp = RP.build(f)
+    rows = f["annual"]["TotalRevenue"]
+    g = rows[-1][1] / rows[-2][1] - 1
+    expected = 0.065 + 0.25 * (g - 0.065)
+    assert inp["y1_segments"]["total"] / inp["rev_y0"] - 1 == pytest.approx(expected, rel=1e-6)
+    assert expected < g / 2

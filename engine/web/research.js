@@ -6,6 +6,8 @@
  */
 (function (root) {
   "use strict";
+  const GROWTH_CENTRE = 0.065,
+    GROWTH_WEIGHT = 0.25; // median revenue growth and the weight on a company's own last year
   const Y = {
     crumb: "https://query1.finance.yahoo.com/v1/test/getcrumb",
     modules:
@@ -228,23 +230,25 @@
     // Yahoo's +1y EPS average can lag its own growth field; keep both and flag the gap
     const epsY2fromG = epsY1 != null && g1eps != null ? epsY1 * (1 + g1eps) : null;
     const epsConflict = epsY2avg != null && epsY2fromG != null && Math.abs(epsY2avg / epsY2fromG - 1) > 0.03;
-    const histG =
+    // Without consensus, last year's growth is shrunk toward the median (see research.py for the evidence).
+    const histGRaw =
       A.TotalRevenue && A.TotalRevenue.length >= 2 && at(A.TotalRevenue, 2) > 0
         ? at(A.TotalRevenue, 1) / at(A.TotalRevenue, 2) - 1
         : null;
+    const histG = histGRaw == null ? null : GROWTH_CENTRE + GROWTH_WEIGHT * (histGRaw - GROWTH_CENTRE);
     if (!revY1)
       warn(
         "y1_segments.total",
         histG != null
-          ? "No consensus revenue; next year uses last year's growth"
+          ? "No consensus revenue; next year uses last year's growth, pulled toward the 6.5% median"
           : "No consensus revenue and under two years of history",
       );
     const y1 = revY1 ? revY1 / M_ : rev0 != null && histG != null ? rev0 * (1 + histG) : null;
-    const y2 = revY2 ? revY2 / M_ : y1 != null && histG != null ? y1 * (1 + Math.min(histG, 0.1)) : null;
+    const y2 = revY2 ? revY2 / M_ : y1 != null && histG != null ? y1 * (1 + histG) : null;
     if (revY1 && !revY2)
       warn(
         "scenarios.Base.growth.total.0",
-        "No consensus for the second year; growth uses history capped at 10%",
+        "No consensus for the second year; growth uses history pulled toward the 6.5% median",
       );
     const gNext = y2 / y1 - 1;
 

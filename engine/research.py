@@ -16,6 +16,11 @@ import datetime as dt
 import math
 import re
 
+GROWTH_CENTRE, GROWTH_WEIGHT = (
+    0.065,
+    0.25,
+)  # median revenue growth and the weight on a company's own last year
+
 RATINGS = [
     (8.5, "AAA", 0.0059),
     (6.5, "AA", 0.0070),
@@ -330,24 +335,24 @@ def build(f):
     eps_y2g = eps_y1 * (1 + g1eps) if eps_y1 is not None and g1eps is not None else None
     eps_conflict = eps_y2avg is not None and eps_y2g is not None and abs(eps_y2avg / eps_y2g - 1) > 0.03
     TR = A.get("TotalRevenue")
-    hist_g = at(TR, 1) / at(TR, 2) - 1 if TR and len(TR) >= 2 and (at(TR, 2) or 0) > 0 else None
+    hist_g_raw = at(TR, 1) / at(TR, 2) - 1 if TR and len(TR) >= 2 and (at(TR, 2) or 0) > 0 else None
+    # Without consensus, last year's growth is a poor forecast: on 937 firm-years of large US companies it missed next
+    # year's growth by 15 points on average, against 11 points when pulled 75% of the way to the 6.5% median
+    # (engine/forecast_error.py). Growth is shrunk toward the median instead.
+    hist_g = None if hist_g_raw is None else GROWTH_CENTRE + GROWTH_WEIGHT * (hist_g_raw - GROWTH_CENTRE)
     if not rev_y1:
         warn(
             "y1_segments.total",
-            "No consensus revenue; next year uses last year's growth"
+            "No consensus revenue; next year uses last year's growth, pulled toward the 6.5% median"
             if hist_g is not None
             else "No consensus revenue and under two years of history",
         )
     y1 = rev_y1 / M_ if rev_y1 else (rev0 * (1 + hist_g) if rev0 is not None and hist_g is not None else None)
-    y2 = (
-        rev_y2 / M_
-        if rev_y2
-        else (y1 * (1 + min(hist_g, 0.1)) if y1 is not None and hist_g is not None else None)
-    )
+    y2 = rev_y2 / M_ if rev_y2 else (y1 * (1 + hist_g) if y1 is not None and hist_g is not None else None)
     if rev_y1 and not rev_y2:
         warn(
             "scenarios.Base.growth.total.0",
-            "No consensus for the second year; growth uses history capped at 10%",
+            "No consensus for the second year; growth uses history pulled toward the 6.5% median",
         )
     g_next = _div(y2, y1) - 1
 

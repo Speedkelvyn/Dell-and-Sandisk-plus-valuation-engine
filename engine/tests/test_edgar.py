@@ -5,6 +5,7 @@ import gzip
 import json
 import pathlib
 import sys
+from typing import ClassVar
 
 import pytest
 
@@ -254,3 +255,28 @@ def test_command_line_pipeline_takes_the_statements_from_the_sec(tmp_path):
     assert R["checks"]["ok"] and written["sec"].name.startswith("ON_edgar_") and written["sec"].exists()
     again = edgar.load(written["sec"])
     assert again["name"] == facts("ON")["name"]
+
+
+def test_a_user_agent_with_a_trailing_newline_is_cleaned_before_it_becomes_a_header(monkeypatch):
+    seen = {}
+
+    class _Resp:
+        headers: ClassVar[dict] = {}
+
+        def read(self):
+            return b"{}"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_open(req, timeout=20):
+        seen["ua"] = req.get_header("User-agent")
+        return _Resp()
+
+    monkeypatch.setattr(edgar.urllib.request, "urlopen", fake_open)
+    monkeypatch.setenv("SEC_USER_AGENT", "Kelvin Afful kelvin@example.com\r\n")
+    edgar._get("https://data.sec.gov/x")
+    assert seen["ua"] == "Kelvin Afful kelvin@example.com"

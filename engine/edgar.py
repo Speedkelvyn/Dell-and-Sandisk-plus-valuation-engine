@@ -403,6 +403,9 @@ SEC_FILES, SEC_DATA = (
 
 def _get(url, ua=None, timeout=20):
     ua = ua or os.environ.get("SEC_USER_AGENT")
+    ua = (
+        " ".join(ua.split()) if ua else ua
+    )  # a pasted secret often ends in a newline, which is an invalid header
     if not ua:
         raise RuntimeError(UA_HELP)
     req = urllib.request.Request(url, headers={"User-Agent": ua, "Accept-Encoding": "gzip"})
