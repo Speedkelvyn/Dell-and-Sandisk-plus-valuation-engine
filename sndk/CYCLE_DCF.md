@@ -80,6 +80,21 @@ Base value with Micron's history in place of my judgement:
 
 The price sits between the Micron-median and Base rows, so it is paying for roughly a median memory cycle with a modest allowance for the AI and contract changes. Base's premium over a pure Micron median is $53 (6%). The history now shapes the Base and the Monte Carlo distributions (trough triangular from -20% to 35% around 8%; mid-cycle from 10% to 42% around 22%); the Bear case (trough -2%, mid-cycle 15%) is the closest to a plain repeat of the past, and a repeat of Micron's FY23 trough is not in the Monte Carlo's likely range.
 
+## Walk-forward check of the margin assumption
+
+Method: at each fiscal year with at least five years of history, forecast the average operating margin of the next four years and compare it with what happened. Micron and Western Digital pooled, 12 origins that overlap in time, so this is a sanity check and not a test of skill.
+
+| Forecast | Mean absolute error | Bias |
+|---|---|---|
+| Current margin held | 12.5 pts | +2.6 |
+| Median of all past years | 12.4 pts | -6.3 |
+| Median of the last five years | 15.1 pts | -1.3 |
+| Half current, half all-years median | 11.3 pts | -1.8 |
+| A fixed 22% | 9.3 pts | +4.7 |
+| A fixed 12% | 9.3 pts | -5.3 |
+
+Two things follow. No rule that reads the company's own history beat a flat number, which says 12 points of data cannot rank forecasting rules; the Base mid-cycle margin cannot be defended or refuted by this sample. And after the three Micron years that began above 30% (FY18 at 49%, FY19 at 32%, FY22 at 32%), the next four years averaged 25%, 8% and 17%. Base's four years after its own peak (FY29 to FY32) average 27%, above all three of those episodes, which is the same call as the 22% mid-cycle margin: more generous than the history, justified only by the contract and AI-demand argument.
+
 ## Against the main model
 
 | | Main model | Cycle model |
