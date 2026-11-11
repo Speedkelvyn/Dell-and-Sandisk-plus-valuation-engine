@@ -14,7 +14,7 @@ The rule reads where the latest margin sits in the company's own history:
   * between: glide to the median margin over three years
 Growth follows the same shape. Every other input is read from the filings or set once below.
 
-    python backtest_cycle.py ../backtest/data MU ../sndk/MEMORY_CYCLE_HISTORY.csv
+    python backtest_cycle.py ../backtest/data MU ../sndk/MEMORY_CYCLE_HISTORY.csv [quarterly]
 
 It only reads files already stored, so it runs in the sandbox. With ten origins from one company the output is a
 table to read, not a statistical test.
@@ -113,13 +113,14 @@ def spec_from_rule(hist, f, tnx_pct: float, flat: bool = False) -> dict:
     }
 
 
-def run(data_dir: str, ticker: str, csv_path: str, years=range(2017, 2025), month_day="-11-15") -> list[dict]:
+def run(
+    data_dir: str, ticker: str, csv_path: str, years=range(2017, 2025), month_day="-11-15", origins=None
+) -> list[dict]:
     d = pathlib.Path(data_dir)
     facts = bt._read(d / f"{ticker}_edgar.json.gz")
     px, idx, tnx = (bt.Prices(bt._read(d / f"{n}_px.json.gz")) for n in (ticker, "GSPC", "TNX"))
     out = []
-    for y in years:
-        asof = f"{y}{month_day}"
+    for asof in origins or [f"{y}{month_day}" for y in years]:
         h = history(pathlib.Path(csv_path), ticker, asof)
         f = bt.feeds_at(ticker, facts, px, idx, tnx, asof)
         if f is None or len(h) < 5:
@@ -174,10 +175,13 @@ def rank_corr(rows, key, horizon) -> float | None:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 4:
+    if len(argv) not in (4, 5):
         print(__doc__)
         return 2
-    rows = run(argv[1], argv[2], argv[3])
+    quarterly = len(argv) == 5 and argv[4] == "quarterly"
+    rows = run(
+        argv[1], argv[2], argv[3], origins=bt.quarter_ends("2017-12-31", "2025-09-30") if quarterly else None
+    )
     print(table(rows))
     for key in ("cycle", "flat"):
         print(key, {h: rank_corr(rows, key, h) for h in ("ret12", "ret24", "ret36")})
