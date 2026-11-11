@@ -66,8 +66,8 @@ SCENARIOS = {
         gT=0.03,
         m27=0.80,
         m28=0.82,
-        trough=0.15,
-        mid=0.28,
+        trough=0.08,  # above Micron's median downturn low (1%): long-term contracts with minimum revenue
+        mid=0.22,  # above Micron's FY09-FY25 median (18.5%): AI storage demand; below its 75th percentile (26%)
         s2c0=5.0,
         s2cT=3.0,
         beta0=2.3,
@@ -109,8 +109,8 @@ DISTS = {
     "gT": ("tri", 0.02, 0.03, 0.04),
     "m27": ("tri", 0.72, 0.80, 0.84),
     "m28": ("tri", 0.60, 0.82, 0.86),
-    "trough": ("tri", -0.10, 0.15, 0.35),
-    "mid": ("tri", 0.12, 0.28, 0.48),
+    "trough": ("tri", -0.20, 0.08, 0.35),  # Micron's downturn lows ran from -37% to 14%
+    "mid": ("tri", 0.10, 0.22, 0.42),  # Micron mean 12%, median 18.5%, 75th percentile 26%
     "s2c0": ("tri", 3.5, 5.0, 7.0),
     "s2cT": ("tri", 2.0, 3.0, 4.5),
     "beta0": ("norm", 2.3, 0.2),
@@ -216,7 +216,7 @@ def run(inp: dict, size: int = 20000, seed: int = 1) -> dict:
     ps = mc["per_share"]
     sens_mid = {
         f"{m:.0%}": cd.value(build({**base, "mid": m}, inp))["per_share"]
-        for m in (0.10, 0.15, 0.20, 0.28, 0.35, 0.45)
+        for m in (0.10, 0.15, 0.185, 0.22, 0.28, 0.35, 0.45)
     }
     sens_beta = {
         f"{b:.1f}": cd.value(build({**base, "betaT": b}, inp))["per_share"] for b in (1.2, 1.4, 1.6, 1.9, 2.3)
