@@ -25,12 +25,18 @@ jobs:
           python-version: "3.12"
       - name: Fail early without the secret
         run: test -n "$SEC_USER_AGENT" || (echo "Add the SEC_USER_AGENT repository secret first" && exit 1)
+      - run: pip install -r requirements.txt
       - run: python engine/refresh_edgar.py backtest/data
-      - run: python engine/backtest.py backtest/data --out backtest/REPORT.md --records backtest/records.json
-      - name: Commit
+      - name: Commit the refreshed filings (so a later failure does not lose the download)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backtest/data
+          git diff --cached --quiet || git commit -m "Refresh the stored SEC filings"
+          git push
+      - run: python engine/backtest.py backtest/data --out backtest/REPORT.md --records backtest/records.json
+      - name: Commit the new report
+        run: |
           git add backtest
-          git diff --cached --quiet || git commit -m "Refresh backtest filings and rerun the backtest"
+          git diff --cached --quiet || git commit -m "Rerun the backtest on the refreshed filings"
           git push
