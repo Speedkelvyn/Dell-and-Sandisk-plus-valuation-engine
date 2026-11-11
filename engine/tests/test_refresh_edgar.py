@@ -5,8 +5,8 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-import edgar  # noqa: E402
-import refresh_edgar  # noqa: E402
+import edgar
+import refresh_edgar
 
 
 def _read(path):
