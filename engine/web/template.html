@@ -2086,7 +2086,7 @@
       <li>Not backtested. The existing backtest covers the main model only.</li></ul></section>
     <section class="box"><h2>Year by year <span>$m</span></h2><div class="scroll" id="cyTbl">${o.v ? cyTable(o.v) : ""}</div></section>
     <section class="box c8"><h2>Monte Carlo, ${f0(mc.n)} draws</h2><div class="chart tall"><canvas id="cCYMC"></canvas></div>
-      <p class="note">Twenty inputs drawn together, tied by a Gaussian copula. Independent of the sliders. Histogram covers the 1st to 99th percentile.</p></section>
+      <p class="note">Twenty inputs drawn together, tied by a Gaussian copula. Independent of the sliders. The spread is widened by a factor of ${mc.widen.toFixed(1)} about the median to allow for error in the model itself (the backtest found the unwidened band too narrow). Histogram covers the 1st to 99th percentile.</p></section>
     <section class="box c4"><h2>Statistics</h2><div class="kv">
       <span>Median</span><span>${px(mc.median)}</span>
       <span>Mean</span><span>${px(mc.mean)}</span>

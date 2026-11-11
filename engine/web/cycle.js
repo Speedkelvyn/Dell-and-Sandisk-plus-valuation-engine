@@ -350,6 +350,19 @@
     return sorted[lo] + (sorted[hi] - sorted[lo]) * (h - lo);
   };
 
+  // Scale sorted values about their median in log space so the spread becomes sqrt(own^2 + err^2); the same correction
+  // as widen() in cycle_dcf.py. Returns [values, k].
+  const Z90 = 1.2815515655446004;
+  function widen(sorted, err) {
+    const med = quantile(sorted, 50),
+      pos = sorted.filter((v) => v > 0);
+    if (!(med > 0) || !err || pos.length < 20) return [sorted, 1];
+    const s = Math.log(quantile(pos, 90) / quantile(pos, 10)) / (2 * Z90);
+    if (!(s > 1e-9)) return [sorted, 1];
+    const k = Math.sqrt(1 + (err / s) ** 2);
+    return [sorted.map((v) => (v > 0 ? med * (v / med) ** k : v)), k];
+  }
+
   function monteCarlo(inp, size, seed) {
     const cy = inp.cycle,
       s = draw(cy.dists, cy.corr, size, seed);
@@ -369,24 +382,39 @@
         dropped++;
       }
     }
-    const sorted = per.slice().sort((a, b) => a - b),
+    const [sorted, wk] = widen(
+        per.slice().sort((a, b) => a - b),
+        cy.model_error || 0,
+      ),
       price = inp.market.price;
     return {
+      widen: wk,
       n: per.length,
       dropped,
       values: sorted,
       median: quantile(sorted, 50),
-      mean: sum(per) / per.length,
+      mean: sum(sorted) / sorted.length,
       percentiles: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((p) => ({
         pct: p,
         per_share: quantile(sorted, p),
       })),
-      probAbove: per.filter((v) => v > price).length / per.length,
+      probAbove: sorted.filter((v) => v > price).length / sorted.length,
       tv_share: sum(tvs) / tvs.length,
     };
   }
 
-  const api = { glide, knotPath, growthPath, value, buildSpec, valueAt, impliedMidMargin, draw, monteCarlo };
+  const api = {
+    widen,
+    glide,
+    knotPath,
+    growthPath,
+    value,
+    buildSpec,
+    valueAt,
+    impliedMidMargin,
+    draw,
+    monteCarlo,
+  };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.VCycle = api;
 })(this);

@@ -39,7 +39,9 @@ The trough and mid-cycle margins are set from the memory-cycle history below, th
 | Base | $905 | +7% | 19% |
 | Bull | $2,963 | +252% | 33% |
 
-Monte Carlo, 20,000 draws: 10th percentile $719, median $951, 90th $1,248. 72% of draws are above the price.
+Monte Carlo, 20,000 draws: 10th percentile $469, median $951, 90th $1,892. 59% of draws are above the price.
+
+The band includes an allowance for error in the model itself. The 20 inputs alone give a 10th to 90th range of $719 to $1,248 (72% above the price), which is too narrow: the point-in-time backtest of the main model found its price landed inside the equivalent band only 49% of the time before a correction, and 74% after it. The correction adds 0.5 in log terms to the spread in quadrature (a factor of 2.5 here) and leaves the median and the order of draws unchanged. The 0.5 was calibrated on 587 valuations of large companies, not on memory makers, and the backtest found the corrected main-model band still about 1.2 times too narrow, so treat $469 to $1,892 as a floor on the uncertainty.
 
 What moves the value, by rank correlation: trough margin +0.69, mid-cycle margin +0.53, depth of the first downturn year +0.36, FY28 growth +0.34. Discount-rate inputs matter far less (equity premium −0.20).
 
@@ -101,10 +103,10 @@ Two things follow. No rule that reads the company's own history beat a flat numb
 |---|---|---|
 | Base DCF | $1,769 | $905 |
 | Monte Carlo median | $1,707 | $951 |
-| Monte Carlo 10th to 90th | $654 to $3,341 | $719 to $1,248 |
+| Monte Carlo 10th to 90th | $654 to $3,341 | $469 to $1,892 |
 | Bear / Bull | $716 / $2,978 | $423 / $2,963 |
 
-The gap in Base is the cycle. The main model keeps a 41% margin for the long run with no downturn; the cycle model puts in a three-year fall and a 22% mid-cycle margin. The two Monte Carlo bands vary different inputs, so their widths are not comparable; the cycle model's Bear and Bull range is wider.
+The gap in Base is the cycle. The main model keeps a 41% margin for the long run with no downturn; the cycle model puts in a three-year fall and a 22% mid-cycle margin. The two Monte Carlo bands vary different inputs, so their widths are not comparable; both now include the same model-error allowance.
 
 ## Read this before relying on it
 

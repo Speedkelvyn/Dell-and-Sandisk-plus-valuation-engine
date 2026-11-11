@@ -96,6 +96,12 @@ SCENARIOS = {
     ),
 }
 
+# Error in the model itself, added in quadrature to the Monte Carlo spread (log scale). The same 0.5 as MC_MODEL_ERR in
+# valuation_v2.py, which the point-in-time backtest calibrated on 587 valuations of large companies. Nothing here has
+# been calibrated on memory makers; the backtest found even the main model's corrected band about 1.2 times too
+# narrow, so 0.5 is a floor, not a conservative figure.
+MODEL_ERROR = 0.5
+
 # One distribution per input (centre = Base). The copula ties related inputs together.
 DISTS = {
     "gA0": ("tri", 1.15, 1.45, 1.65),
@@ -141,6 +147,7 @@ def cycle_block() -> dict:
         "scenarios": SCENARIOS,
         "dists": {k: list(v) for k, v in DISTS.items()},
         "corr": [list(c) for c in CORR],
+        "model_error": MODEL_ERROR,
         "ppe": PPE,
     }
 
@@ -212,7 +219,7 @@ def run(inp: dict, size: int = 20000, seed: int = 1) -> dict:
     cap = price * shares
     scen = {k: cd.value(build(v, inp)) for k, v in SCENARIOS.items()}
     base = SCENARIOS["Base"]
-    mc = cd.monte_carlo(lambda x: build(x, inp), DISTS, CORR, size=size, seed=seed)
+    mc = cd.monte_carlo(lambda x: build(x, inp), DISTS, CORR, size=size, seed=seed, model_error=MODEL_ERROR)
     ps = mc["per_share"]
     sens_mid = {
         f"{m:.0%}": cd.value(build({**base, "mid": m}, inp))["per_share"]
@@ -261,7 +268,10 @@ def summarise(res: dict) -> str:
     )
     L.append("")
     p = res["percentiles"]
-    L.append(f"Monte Carlo ({len(res['mc']['equity'])} draws, {res['mc']['dropped']} dropped)")
+    L.append(
+        f"Monte Carlo ({len(res['mc']['equity'])} draws, {res['mc']['dropped']} dropped; "
+        f"spread widened x{res['mc']['widen']:.2f} for model error {MODEL_ERROR})"
+    )
     L.append("  pct   per share   vs price")
     for r in p:
         L.append(f"  {r['pct']:>3}   ${r['per_share']:>8,.0f}   {r['per_share'] / res['price'] - 1:+.0%}")
@@ -302,6 +312,8 @@ def to_json(res: dict) -> dict:
         "scenarios": {k: row(v) for k, v in res["scenarios"].items()},
         "percentiles": res["percentiles"],
         "p_above_price": res["p_above_price"],
+        "model_error": MODEL_ERROR,
+        "widen": res["mc"]["widen"],
         "drivers": res["drivers"],
         "implied_mid_margin": res["implied_mid_margin"],
         "sensitivity": {

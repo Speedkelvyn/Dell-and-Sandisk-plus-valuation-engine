@@ -59,3 +59,30 @@ def test_run_is_seeded_and_percentiles_are_ordered():
     assert ps == sorted(ps)
     assert 0 <= a["p_above_price"] <= 1
     assert json.dumps(vs.to_json(a))  # serialisable
+
+
+def test_model_error_widens_the_band_but_not_the_median_or_the_order():
+    import numpy as np
+
+    import cycle_dcf as cd
+
+    z90 = 1.2815515655446004
+    rng = np.random.default_rng(0)
+    v = np.exp(rng.normal(np.log(900), 0.2, 4000))
+
+    def spread(a):
+        return np.log(np.percentile(a, 90) / np.percentile(a, 10)) / (2 * z90)
+
+    w, _ = cd.widen(v, 0.5)
+    assert abs(np.median(w) - np.median(v)) < 1e-6 * np.median(v)
+    assert (np.argsort(w) == np.argsort(v)).all()
+    assert abs(spread(w) - (spread(v) ** 2 + 0.5**2) ** 0.5) < 1e-6
+    same, k0 = cd.widen(v, 0.0)
+    assert k0 == 1.0 and (same == v).all()
+
+
+def test_run_widens_the_published_band():
+    narrow = vs.run(INP, size=400, seed=3)
+    assert narrow["mc"]["widen"] > 1.5
+    lo, hi = narrow["percentiles"][1]["per_share"], narrow["percentiles"][9]["per_share"]
+    assert hi / lo > 3  # a band this wide cannot come from parameter shocks alone

@@ -183,15 +183,41 @@ def draw(
     return {k: _ppf(dists[k], u[:, i]) for k, i in idx.items()}
 
 
+_Z90 = 1.2815515655446004
+
+
+def widen(values: np.ndarray, err: float) -> tuple[np.ndarray, float]:
+    """Scale values about their median in log space so the spread becomes sqrt(own^2 + err^2). Returns (values, k).
+
+    The same correction as `widen_draws` in valuation_v2.py: parameter shocks alone give a band that is too narrow
+    (the point-in-time backtest found 74% coverage for an 80% band even after the main model's correction), because
+    they leave out error in the model itself. Median and order are unchanged."""
+    v = np.asarray(values, float)
+    med = float(np.median(v))
+    pos = v[v > 0]
+    if not (med > 0) or not err or pos.size < 20:
+        return v, 1.0
+    s = float(np.log(np.percentile(pos, 90) / np.percentile(pos, 10)) / (2 * _Z90))
+    if not (s > 1e-9):
+        return v, 1.0
+    k = (1.0 + (err / s) ** 2) ** 0.5
+    out = v.copy()
+    pm = v > 0
+    out[pm] = med * (v[pm] / med) ** k
+    return out, k
+
+
 def monte_carlo(
     build: Callable[[dict], dict],
     dists: dict[str, tuple],
     corr: list[tuple[str, str, float]],
     size: int = 5000,
     seed: int | None = 1,
+    model_error: float = 0.0,
 ) -> dict:
     """Value `size` draws. `build` turns one draw (name -> float) into a spec for `value`.
-    Draws that cannot be valued (terminal growth at or above the discount rate) are counted and dropped."""
+    Draws that cannot be valued (terminal growth at or above the discount rate) are counted and dropped.
+    With `model_error` > 0 the equity and per-share draws are widened by `widen`."""
     s = draw(dists, corr, size, seed)
     eq, ps, tvs, bad = [], [], [], 0
     keep = np.zeros(size, dtype=bool)
@@ -205,12 +231,18 @@ def monte_carlo(
         eq.append(v["equity"])
         ps.append(v["per_share"])
         tvs.append(v["tv_share"])
+    eq_a, ps_a = np.array(eq), np.array(ps)
+    k = 1.0
+    if model_error:
+        eq_a, k = widen(eq_a, model_error)
+        ps_a, _ = widen(ps_a, model_error)
     return {
-        "inputs": {k: a[keep] for k, a in s.items()},
-        "equity": np.array(eq),
-        "per_share": np.array(ps),
+        "inputs": {k_: a[keep] for k_, a in s.items()},
+        "equity": eq_a,
+        "per_share": ps_a,
         "tv_share": np.array(tvs),
         "dropped": bad,
+        "widen": k,
     }
 
 
