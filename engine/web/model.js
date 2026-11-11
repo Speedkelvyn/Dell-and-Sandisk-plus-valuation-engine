@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Kelvin Afful. MIT License, see LICENSE.
 /* model.js — valuation engine shared by the terminal UI and the tests.
  * Pure functions, no DOM. Mirrors valuation_v2.py line for line; the
  * parity test (tests/test_parity.py) checks both give identical numbers.

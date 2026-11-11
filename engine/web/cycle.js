@@ -1,3 +1,4 @@
+// Copyright (c) 2026 Kelvin Afful. MIT License, see LICENSE.
 /* cycle.js — cycle-based FCFF DCF with copula Monte Carlo. Pure functions, no DOM.
  * Mirrors cycle_dcf.py and the SNDK assumptions in value_sndk_cycle.py; tests/test_js_parity.py checks that
  * value() and buildSpec() give the same numbers. The Monte Carlo uses its own random generator, so its

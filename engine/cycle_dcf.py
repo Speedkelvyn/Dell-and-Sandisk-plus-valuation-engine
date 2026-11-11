@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Kelvin Afful. MIT License, see LICENSE.
 """
 cycle_dcf.py -- cycle-based FCFF DCF with copula Monte Carlo.
 

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Kelvin Afful. MIT License, see LICENSE.
 """
 valuation_v2.py -- segment-build DCF + relative valuation, any ticker.
 

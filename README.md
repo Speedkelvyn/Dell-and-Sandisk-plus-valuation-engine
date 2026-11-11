@@ -123,3 +123,7 @@ NODE_PATH=$PWD/node_modules pytest -q engine/tests
 ```
 
 Part of [Kelvin Afful's portfolio](https://speedkelvyn.github.io/Speedy.github.io/).
+
+## License
+
+MIT License, Copyright (c) 2026 Kelvin Afful. Reuse is welcome with the copyright notice kept; see [LICENSE](LICENSE).
