@@ -47,3 +47,19 @@ Value-weighted quintiles (weighting by size) shrink the composite spread to 0.00
 - No transaction costs. Quintile portfolios here are rebalanced monthly.
 - The extract ends with fiscal years through September 2024, so the last signals use year-ends no later than that.
 - The data are licensed, so the result files and the extract stay out of the repository; only the code and these summary statistics are published.
+
+## Do noise-driven moves reverse? (`engine/noise_test.py`)
+Rumours and news flow move prices away from value. If a month's move was noise it should reverse next month; heavy volume marks news and attention. Signal: minus the month-t return, split by terciles of abnormal volume (month volume over the firm's own mean of the prior 12 months; terciles taken across all firms each month). Same sample, universes and scoring as above.
+
+| universe, volume | IC (t) | Q5-Q1 %/mo (t) | 4-factor alpha %/mo (t) |
+|---|---|---|---|
+| top 1,000, all | 0.009 (1.3) | 0.15 (0.8) | 0.20 (0.9) |
+| top 1,000, low volume | 0.024 (2.5) | 0.53 (2.0) | 0.76 (2.4) |
+| top 1,000, high volume | 0.006 (0.7) | 0.01 (0.1) | 0.05 (0.2) |
+| S&P 500, all | 0.011 (1.4) | 0.19 (1.1) | 0.25 (1.1) |
+| S&P 500, high volume | 0.000 (0.0) | 0.08 (0.3) | 0.11 (0.4) |
+
+- One-month reversal is weak among large and mid caps in this sample, and there is no reversal after high-volume moves. Those moves neither bounce back nor continue.
+- The only cell above |t| 2 is low-volume moves in the top 1,000, which reverse: 0.89%/month (t 2.2) through 2012 and 0.20%/month (t 0.6) since. That pattern is the one liquidity-provision explanations predict (a price move on thin volume is largely a temporary pressure), but it is one cell out of 24, it fades after 2012, and low-volume terciles contain few S&P 500 names in many months.
+- Reading: noise is real but is not a tradeable signal at this horizon in large caps. Its place in the valuation framework is the width of the range, which already calibrates (77% held against an 80% target).
+- Twitter and other social-media text are not tested: no historical feed is available here.

@@ -92,3 +92,17 @@ def test_sp500_membership_is_point_in_time():
 def test_newey_west_matches_plain_se_for_independent_data():
     x = np.random.default_rng(3).normal(size=4000)
     assert abs(ft.nw_se(x) - x.std() / np.sqrt(len(x))) < 0.2 * x.std() / np.sqrt(len(x))
+
+
+def test_abnormal_volume_is_relative_to_the_firms_own_history():
+    import noise_test as nt
+
+    df = synthetic(n_firms=100, n_months=30)
+    df["vol"] = 100.0
+    spike = (df["permno"] == 7) & (df["date"] == pd.Timestamp("2011-06-30"))
+    df.loc[spike, "vol"] = 300.0
+    p = nt.add_noise_signals(ft.build_panel(df), df)
+    got = p[(p["permno"] == 7) & (p["date"] == pd.Timestamp("2011-06-30"))]["avol"].iloc[0]
+    assert abs(got - 3.0) < 1e-9
+    assert (p.loc[p["permno"] == 8, "avol"].dropna().round(9) == 1.0).all()
+    assert (p["rev"] == -p["ret"]).all()
