@@ -1,0 +1,44 @@
+name: Expand backtest
+
+# Builds a wide test set (the 132 tested companies plus today's S&P 500 and S&P 400 members, excluding financials and
+# real estate) with filings and prices from 2009, then runs the point-in-time backtest every second quarter from
+# mid-2013 to 2025 on 4 processes. Writes backtest/REPORT_wide.md and backtest/records_wide.json.
+# Run by hand from the Actions tab. Needs the SEC_USER_AGENT secret (see refresh-backtest.yml).
+# If it stops part way, run it again: names already downloaded are kept and skipped.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  expand:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      BACKTEST_SINCE: "2009-12-31"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fail early without the secret
+        run: test -n "$SEC_USER_AGENT" || (echo "Add the SEC_USER_AGENT repository secret first" && exit 1)
+      - run: pip install -r requirements.txt lxml
+      - run: python engine/build_universe.py backtest/data_wide
+      - name: Commit the downloaded data (so a later failure does not lose it)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backtest/data_wide
+          git diff --cached --quiet || git commit -m "Add the wide backtest universe (filings and prices from 2009)"
+          git push
+      - run: >
+          python engine/backtest.py backtest/data_wide --from 2013-06-30 --to 2025-09-30 --step 2 --workers 4
+          --out backtest/REPORT_wide.md --records backtest/records_wide.json
+      - name: Commit the report
+        run: |
+          git add backtest
+          git diff --cached --quiet || git commit -m "Run the backtest on the wide universe"
+          git push

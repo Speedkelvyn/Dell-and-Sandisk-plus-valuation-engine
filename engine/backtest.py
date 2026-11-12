@@ -25,6 +25,7 @@ import datetime as dt
 import gzip
 import json
 import math
+import os
 import pathlib
 import sys
 
@@ -56,7 +57,7 @@ FINANCIAL = {
     "PNC",
 }
 REIT = {"O", "PLD", "SPG", "AMT", "EQIX", "PSA", "WELL", "VICI"}
-SINCE = "2016-12-31"
+SINCE = os.environ.get("BACKTEST_SINCE", "2016-12-31")  # first period end the stored filings cover
 
 
 def model_of(t: str) -> str:
@@ -265,17 +266,39 @@ def quarter_ends(start: str, end: str) -> list[str]:
     return out
 
 
-def run(data_dir, start="2020-06-30", end="2025-09-30", mc_n=300, tickers=None, progress=None):
-    d = pathlib.Path(data_dir)
+def _one_name(args):
+    """All the valuations for one ticker (top level so a process pool can run it)."""
+    d, t, dates, mc_n = args
+    d = pathlib.Path(d)
     idx, tnx = Prices(_read(d / "GSPC_px.json.gz")), Prices(_read(d / "TNX_px.json.gz"))
-    names = tickers or sorted(p.name.split("_")[0] for p in d.glob("*_edgar.json.gz"))
+    facts, px = _read(d / f"{t}_edgar.json.gz"), Prices(_read(d / f"{t}_px.json.gz"))
+    return [value_at(t, facts, px, idx, tnx, asof, mc_n) for asof in dates]
+
+
+def run(
+    data_dir, start="2020-06-30", end="2025-09-30", mc_n=300, tickers=None, progress=None, step=1, workers=1
+):
+    """Every ticker at every `step`-th quarter end. `workers` > 1 spreads tickers over processes."""
+    d = pathlib.Path(data_dir)
+    names = tickers or sorted(
+        p.name.split("_")[0] for p in d.glob("*_edgar.json.gz") if not p.name.startswith(("GSPC", "TNX"))
+    )
+    dates = quarter_ends(start, end)[::step]
+    jobs = [(str(d), t, dates, mc_n) for t in names]
     recs = []
-    for t in names:
-        facts, px = _read(d / f"{t}_edgar.json.gz"), Prices(_read(d / f"{t}_px.json.gz"))
-        for asof in quarter_ends(start, end):
-            recs.append(value_at(t, facts, px, idx, tnx, asof, mc_n))
-        if progress:
-            progress(t, recs)
+    if workers > 1:
+        import multiprocessing as mp
+
+        with mp.Pool(workers) as pool:
+            for t, part in zip(names, pool.imap(_one_name, jobs), strict=True):
+                recs += part
+                if progress:
+                    progress(t, recs)
+    else:
+        for t, job in zip(names, jobs, strict=True):
+            recs += _one_name(job)
+            if progress:
+                progress(t, recs)
     return recs
 
 
@@ -472,7 +495,7 @@ def report(recs, stats6, stats12, start, end) -> str:
     s = stats12
     tickers = sorted({r["ticker"] for r in recs})
     L += [
-        f"{len(tickers)} large US companies, quarter-end dates from {start} to {end}. On each date the engine saw only "
+        f"{len(tickers)} US companies, quarter-end dates from {start} to {end}. On each date the engine saw only "
         "SEC filings already filed, the price and the 10-year yield that day, and no analyst consensus (Yahoo only "
         "serves today's), then the stock's return over the next 6 and 12 months was compared with the S&P 500.",
         "",
@@ -580,6 +603,8 @@ def main(argv=None):
     ap.add_argument("--from", dest="start", default="2020-06-30")
     ap.add_argument("--to", dest="end", default="2025-09-30")
     ap.add_argument("--mc", type=int, default=300)
+    ap.add_argument("--step", type=int, default=1, help="use every n-th quarter end")
+    ap.add_argument("--workers", type=int, default=1)
     ap.add_argument("--tickers", nargs="*")
     ap.add_argument("--out", type=pathlib.Path, default=pathlib.Path("backtest_report.md"))
     ap.add_argument("--records", type=pathlib.Path, help="also write every valuation as JSON")
@@ -591,6 +616,8 @@ def main(argv=None):
         a.mc,
         a.tickers,
         progress=lambda t, r: print(f"{t:<6} {len(r)} valuations so far", flush=True),
+        step=a.step,
+        workers=a.workers,
     )
     if a.records:
         a.records.write_text(json.dumps(recs, indent=0), encoding="utf-8")
