@@ -1066,6 +1066,7 @@
         <span>P(intrinsic value &gt; price), Monte Carlo</span><span>${pct(R.mc.probAbove)}</span>
         <span>Share of price that is growth (PVGO)</span><span>${pct(R.pv.share)}</span>
       </div>
+      <p class="note" style="margin-top:8px">How far to trust the call: in a point-in-time test of 12,218 valuations of 615 US companies (2013 to 2025), the upside, the call and this probability did not predict which stocks beat the market over the next 12 months (rank correlation -0.01, t-statistic -0.3). What did hold up is the range: the Monte Carlo 10th to 90th band contained the later price 77% of the time against a target of 80%. Read the value as an estimate with a range, not as a signal to trade on.</p>
       <p class="note" style="margin-top:10px">${
         v.alpha < 0
           ? `<b>No long alpha at ${px(I.market.price)}.</b> The price needs more than the ${S.scen.toLowerCase()} case delivers; see what it implies on the right. A long position earns its required return only below about ${px(v.fair / (1 + v.requiredReturn - v.divYield))}.`
@@ -2083,7 +2084,7 @@
     <section class="box"><h2>Reading it</h2><ul class="list note">
       <li>${cyFY(1)} and ${cyFY(2)} follow the Street. Everything after is a judgement: how long the boom lasts, how deep the fall goes, what a normal year earns.</li>
       <li>The price is the line to beat: the implied mid-cycle margin is what the market is paying for, holding the other sliders.</li>
-      <li>Not backtested. The existing backtest covers the main model only.</li></ul></section>
+      <li>Not backtested as a model. The main-model backtest found no skill in upside to fair value, and a Micron test of this method found a downward bias and no skill (see the report).</li></ul></section>
     <section class="box"><h2>Year by year <span>$m</span></h2><div class="scroll" id="cyTbl">${o.v ? cyTable(o.v) : ""}</div></section>
     <section class="box c8"><h2>Monte Carlo, ${f0(mc.n)} draws</h2><div class="chart tall"><canvas id="cCYMC"></canvas></div>
       <p class="note">Twenty inputs drawn together, tied by a Gaussian copula. Independent of the sliders. The spread is widened by a factor of ${mc.widen.toFixed(1)} about the median to allow for error in the model itself (the backtest found the unwidened band too narrow). Histogram covers the 1st to 99th percentile.</p></section>
