@@ -48,6 +48,24 @@ median 24 months before the exit (quartiles 10 to 59).
 result by construction. The rating's AUC for leaving the data through a merger or other non-failure exit is 0.551,
 so it is not simply picking up "about to disappear". Widening the failure label to include any exit below $1 gives 0.887.
 
+## Early warning: the headline is flattered by stocks that had already collapsed
+
+Of the companies that failed within 12 months, 34% traded under $1 and 68% under $3 at the information date, so the
+market had priced the failure before the statements were filed. A lender needs the warning before that. Restricted to
+company-years with a price of $3 or more (`early_warning` in `credit_backtest.py`):
+
+| Within 12 months, price of $3 or more | Rating | Statements only | Altman Z | Altman Z'' |
+|---|---|---|---|---|
+| AUC, all years (186 failures) | 0.835 | 0.801 | 0.721 | 0.717 |
+| AUC, test years (72 failures) | 0.835 | 0.811 | 0.736 | 0.737 |
+| AUC, 24 months, all years | 0.827 | 0.796 | 0.734 | 0.722 |
+
+At this level the rating (grades 7 to 9) flags 8.6% of company-years and catches 59% of the failures one year ahead.
+Altman Z below 1.81 catches 56% while flagging 25%, so the rating gives the same catch with about a third of the flags.
+Default rates within 12 months by grade: grades 1 to 5, 0.1% to 0.3%; grade 6, 0.4%; grade 7, 1.3%; grade 8, 2.2%;
+grade 9, 4.3%. The first grade 7 to 9 statement came a median 34 months before the exit (quartiles 18 to 74). The
+failures one year out are 186, so these numbers are noisier than the full-sample ones above.
+
 ## Well-known failures
 
 Grade by statement date (months before the exit), with the market component:
@@ -66,19 +84,52 @@ The misses matter. Circuit City was grade 1 until four months before the exit, a
 its health, was grade 5. A rating built on reported statements cannot see a failure the statements hide or a collapse
 that comes inside one year.
 
+## Weak spots, tested
+
+**1. How much of the signal is the market?** Distance to default alone scores 0.897 and the statements alone 0.870, so the
+stock price carries a lot. Two tests (`credit_ceiling.py`, fitted on statements to 2012, scored on 2013 and later):
+
+| Test AUC within 12 months | |
+|---|---|
+| Fixed-weight rating (nothing fitted) | 0.896 |
+| Logistic fitted on the same statement ratios | 0.873 (the fixed-weight statements-only rating: 0.867) |
+| Same plus one-year trends in ROA, leverage, margin, sales growth | 0.877 |
+| Logistic on statements plus distance to default | 0.904 |
+| Logistic on statements plus stock return, volatility and market leverage | 0.925 |
+
+The fixed weights are within 0.01 of a fitted model on the same inputs, so re-weighting would gain nothing, and trends add
+0.004. Industry-relative ratios added nothing in an exploratory run (not in the script). The headroom is in the market
+variables, which a private borrower does not have. For a private borrower the statements-only rating is the figure to
+quote (AUC 0.87, 0.80 on stocks of $3 or more).
+
+**2. False alarms.** Of the company-years graded 7 to 9 (statements to 2021, so 36 months of follow-up exist), 11% failed
+within 36 months and 7% left the exchange within 36 months at under $1, which is probably failure without the Q marker;
+15% left at $1 or more (a merger or buyout); 7% failed later; 60% were still listed 36 months later. Among grade 9, 19%
+failed within 36 months, 13% left under $1, 13% were acquired and 49% were still listed. So the earlier "77% of grade 9
+companies never failed" counts the probable failures with no Q marker as survivors; the true false-alarm rate is lower,
+and still large, because a weak statement is not a failure.
+
+**3. Missed failures.** 12% of the 678 failures (82) were graded 1 to 4 on the last statement before the exit; 75% were
+graded 7 to 9. The missed companies are mid-sized (median assets $125 million), the exit came a median 10 months later,
+and 41% had a stock down more than 30% over the prior year while only 13% had sales falling more than 10%. Two overlays
+fixed in advance, moving a grade down when the stock is down 30% or 50% in a year or when ROA or sales are falling
+sharply, were tested and **rejected**: on the test years they raised the share flagged from 14.3% to 19.3% for a catch
+rate of 83.6% to 84.5% and lowered the AUC (0.893 to 0.890). The failures hidden in the statements (Enron) or coming
+from a sudden shock are not recoverable this way.
+
 ## Limits
 
 - **The failure label is approximate.** The Q marker misses failures whose ticker was reused or changed, and the exit
   date is when the stock left the data, which is usually within a few months of the filing and sometimes years after
-  (WAMUQ, Washington Mutual's bankruptcy ticker, has prices in the file until 2016). Lead times are measured to the exit and can be overstated.
-- **Failures after the data ends are counted as survivors,** so false alarms among the latest years are overstated.
-  Of the companies that reached grade 9, 77% never failed in the data.
-- **The market component carries much of the signal.** Distance to default alone scores 0.897; the statements alone 0.870.
-  The market has already priced most distress, so the rating is best read as a ranking of where trouble is, not a
-  forecast the market has missed.
+  (WAMUQ, Washington Mutual's bankruptcy ticker, has prices in the file until 2016). Lead times are measured to the exit
+  and can be overstated. A statement dated after the true filing but before the exit counts as a warning.
+- **Failures after the data ends are counted as survivors.** Q-marked companies still trading at the end are dropped.
+- **The market component carries much of the signal,** which is why the early-warning and statements-only figures above
+  are the ones to quote.
 - **Compustat figures are the latest reported,** and a restated year uses its restated value, so there is mild look-ahead
   in the statements.
 - **Nothing is fitted,** but the weights were set by the author, who knew credit practice and the broad literature. The
-  train and test years show the pattern is stable, not that the weights are optimal.
+  overlay and ceiling checks were designed after seeing the first results, so they are diagnostics, and the overlays
+  were rejected, not tuned.
 - Coverage: non-financial companies of $50 million or more of assets with a price. Banks, small companies and private
   borrowers are not tested.

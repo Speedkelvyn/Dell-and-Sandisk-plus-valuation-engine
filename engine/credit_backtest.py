@@ -250,6 +250,88 @@ def other_exits(p: pd.DataFrame, h: int = 12) -> float:
     return auc(y, -p["score"].to_numpy())
 
 
+EARLY_PRICE = 3.0
+
+
+def early_warning(p: pd.DataFrame, min_price: float = EARLY_PRICE) -> None:
+    """The test that matters to a lender: companies whose stock has not already collapsed (price at or above min_price)."""
+    s = p[p["prc"].abs() >= min_price]
+    y12 = p[p["y12"] == 1]
+    print(
+        f"\nalready collapsed: {(y12['prc'].abs() < 1).mean():.0%} of the 12-month failures traded under $1 and "
+        f"{(y12['prc'].abs() < min_price).mean():.0%} under ${min_price:.0f} at the information date"
+    )
+    for name, sub in (
+        ("all", s),
+        ("train", s[s["datadate"].dt.year <= SPLIT_YEAR]),
+        ("test", s[s["datadate"].dt.year > SPLIT_YEAR]),
+    ):
+        for h in HORIZONS:
+            y = sub[f"y{h}"].to_numpy()
+            print(
+                f"[price >= ${min_price:.0f}, {name}, {h}m] n={len(sub):,} failures={int(y.sum())}  AUC rating "
+                f"{auc(y, -sub['score'].to_numpy()):.3f}  statements only {auc(y, -sub['score_fund'].to_numpy()):.3f}  "
+                f"Altman Z {auc(y, -sub['altman_z'].to_numpy()):.3f}  Z'' {auc(y, -sub['altman_z2'].to_numpy()):.3f}"
+            )
+    for h in HORIZONS:
+        for nm, flag in (
+            ("grade 7-9", s["grade"] >= 7),
+            ("Altman Z < 1.81", s["altman_z"] < 1.81),
+            ("Z'' < 1.1", s["altman_z2"] < 1.1),
+        ):
+            st = flag_stats(s, flag, h)
+            print(
+                f"[price >= ${min_price:.0f}] {h}m {nm:>16}: catch {st['catch']:.1%}  flagged {st['flagged']:.1%}  precision {st['precision']:.1%}"
+            )
+    print(
+        f"default rate within 12 months by grade, price >= ${min_price:.0f}:\n"
+        + by_grade(s, 12).to_string(float_format=lambda x: f"{x:.3f}")
+    )
+    lt = lead_time(s.assign(f79=s["grade"] >= 7), "f79")
+    print(
+        f"lead time, price >= ${min_price:.0f}: n={len(lt)} median {lt.median():.0f} months, quartiles {lt.quantile(0.25):.0f}-{lt.quantile(0.75):.0f}"
+    )
+
+
+def fate_of(r) -> str:
+    """What happened within 36 months of a statement: needs fail, unknown, penny_exit, last, months and END_CUTOFF."""
+    if r.fail and r.months <= 36:
+        return "1 failed within 36 months (Q marker)"
+    if r.unknown and r.months <= 36:
+        return "2 Q ticker, filed after the data ends"
+    if r.penny_exit and r.months <= 36:
+        return "3 left within 36 months at under $1 (probable failure)"
+    if r.last < END_CUTOFF and r.months <= 36:
+        return "4 left within 36 months at $1 or more (merger, buyout)"
+    if r.fail or r.unknown:
+        return "5 failed after 36 months"
+    return "6 still listed 36 months later"
+
+
+def fate_table(df: pd.DataFrame, firm: pd.DataFrame, min_grade: int = 7) -> pd.DataFrame:
+    """Outcomes of every company-year graded min_grade or worse, for statements with a full 36 months of follow-up."""
+    cols = ["tic", "last", "fail", "unknown", "penny_exit", "last_prc"]
+    pan = panel(df).merge(firm[cols], left_on="gvkey", right_index=True)
+    pan = pan[(pan["last"] > pan["info"]) & (pan["datadate"].dt.year <= 2021)].copy()
+    pan["months"] = (pan["last"].dt.year - pan["info"].dt.year) * 12 + (
+        pan["last"].dt.month - pan["info"].dt.month
+    )
+    pan = pan.assign(months_to_exit=pan["months"])
+    for h in HORIZONS:
+        pan[f"y{h}"] = 0
+    pan = score_panel(pan).dropna(subset=["score"])
+    d = pan[pan["grade"] >= min_grade].copy()
+    d["fate"] = [fate_of(r) for r in d.itertuples(index=False)]
+    out = d.groupby(["fate"]).size().rename("n").to_frame()
+    out["share"] = out["n"] / out["n"].sum()
+    return out
+
+
+def missed_failures(p: pd.DataFrame) -> pd.DataFrame:
+    """The last statement before the exit of every failed company, with the grade it was given."""
+    return p[p["fail"]].sort_values("info").groupby("gvkey").tail(1)
+
+
 CASES = {
     "ENRNQ": "Enron",
     "NRTLQ": "Nortel",
@@ -322,6 +404,13 @@ def report(p: pd.DataFrame) -> None:
     print(
         f"AUC of the rating for non-failure exits within 12 months (mergers etc.): {other_exits(p, 12):.3f}"
     )
+    early_warning(p)
+    last = missed_failures(p)
+    print(
+        f"\nfailed companies, grade on the last statement before the exit (n={len(last)}): "
+        + ", ".join(f"{int(g)}: {n}" for g, n in last["grade"].value_counts().sort_index().items())
+    )
+    print(f"graded 1-4: {(last['grade'] <= 4).mean():.1%}   graded 7-9: {(last['grade'] >= 7).mean():.1%}")
     ct = case_table(p)
     print("\nwell-known failures, last four statements before the exit:")
     print(ct.groupby("company").tail(4).round(2).to_string(index=False))
@@ -341,7 +430,10 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("ccm")
     df = load(ap.parse_args().ccm)
-    report(score_panel(attach(panel(df), failures(df))))
+    firm = failures(df)
+    report(score_panel(attach(panel(df), firm)))
+    print("\nwhat happened within 36 months to companies graded 7-9 (statements to 2021):")
+    print(fate_table(df, firm).to_string(float_format=lambda x: f"{x:.3f}"))
 
 
 if __name__ == "__main__":

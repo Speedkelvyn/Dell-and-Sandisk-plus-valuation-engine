@@ -158,6 +158,7 @@ def test_failure_labels():
 def test_horizon_labels_and_gone_firms_dropped():
     firm = pd.DataFrame(
         {
+            "tic": ["XYZQ"],
             "last": [pd.Timestamp("2010-06-30")],
             "fail": [True],
             "unknown": [False],
@@ -171,3 +172,33 @@ def test_horizon_labels_and_gone_firms_dropped():
     assert len(out) == 2  # the statement dated after the exit is dropped
     assert out["months_to_exit"].tolist() == [26, 14]
     assert out["y24"].tolist() == [0, 1] and out["y12"].tolist() == [0, 0]
+
+
+def _row(**kw):
+    base = {
+        "fail": False,
+        "unknown": False,
+        "penny_exit": False,
+        "last": pd.Timestamp("2020-01-31"),
+        "months": 20,
+    }
+    return type("R", (), {**base, **kw})()
+
+
+def test_fate_of_classifies_each_outcome():
+    assert cb.fate_of(_row(fail=True)).startswith("1")
+    assert cb.fate_of(_row(fail=True, months=40)).startswith("5")
+    assert cb.fate_of(_row(unknown=True, last=pd.Timestamp("2024-12-31"))).startswith("2")
+    assert cb.fate_of(_row(penny_exit=True)).startswith("3")
+    assert cb.fate_of(_row()).startswith("4")  # left at a normal price: a merger
+    assert cb.fate_of(_row(last=pd.Timestamp("2024-12-31"), months=40)).startswith("6")
+
+
+def test_overlay_notches_are_capped_and_ordered():
+    import credit_ceiling as cc
+
+    d = pd.DataFrame(
+        {"ret12": [0.1, -0.35, -0.6, -0.6], "d_roa": [0.0, 0.0, 0.0, -0.2], "growth": [0.0, 0.0, 0.0, 0.0]}
+    )
+    assert cc.notches(d).tolist() == [0, 1, 2, 2]  # two notches at most
+    assert cc.notches(d, market=False).tolist() == [0, 0, 0, 1]
