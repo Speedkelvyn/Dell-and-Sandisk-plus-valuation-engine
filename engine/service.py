@@ -40,6 +40,7 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 import build_page  # noqa: E402
+import credit_spread as CREDIT  # noqa: E402
 import excel_model  # noqa: E402
 import macro as MACRO  # noqa: E402
 import research as RP  # noqa: E402
@@ -153,6 +154,41 @@ def with_sec(feeds: dict, ticker: str, cache_dir, day: str, mode, refresh=False,
             **feeds,
             "fundamentals": {"source": "Yahoo Finance", "fields": {}, "note": f"SEC EDGAR not used: {e}"},
         }
+
+
+def credit_rating(
+    ticker: str,
+    cache_dir: pathlib.Path | None = None,
+    today: str | None = None,
+    refresh: bool = False,
+    with_market: bool = True,
+    fetcher=None,
+    sec_fetcher=None,
+) -> dict:
+    """Rate a company from its SEC filings (every fiscal year) and, when Yahoo answers, its stock; see credit_spread.py."""
+    t = clean_ticker(ticker)
+    cache_dir = pathlib.Path(cache_dir) if cache_dir else DATA_DIR / "cache"
+    day = today or dt.date.today().isoformat()
+    try:
+        facts = get_sec(t, cache_dir, day, refresh, sec_fetcher)
+    except Exception as e:
+        raise DataError(f"Could not get SEC filings for {t}: {type(e).__name__}: {e}") from e
+    market, note = None, None
+    if with_market:
+        try:
+            feeds, _ = get_feeds(t, cache_dir=cache_dir, today=day, fundamentals="yahoo", fetcher=fetcher)
+            market = CREDIT.market_from_feeds(feeds)
+            if market is None:
+                note = (
+                    "Yahoo had no price history for this ticker, so the rating rests on the statements alone."
+                )
+        except DataError as e:
+            note = f"No market data ({e}); the rating rests on the statements alone."
+    out = CREDIT.rate_facts(facts, market)
+    out.update(ticker=t, source=EDGAR.SOURCE, note=note)
+    if not out["years"]:
+        raise DataError(f"{t} has no annual statements in its SEC filings.")
+    return out
 
 
 def get_feeds(

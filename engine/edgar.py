@@ -164,6 +164,8 @@ DEBT_CURRENT = ["LongTermDebtCurrent", "DebtCurrent", "LongTermDebtAndCapitalLea
 DEBT_OTHER = ["ShortTermBorrowings", "CommercialPaper"]
 DEBT_LONG = ["LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations", "LongTermDebt"]
 LEASES = ["FinanceLeaseLiabilityNoncurrent", "FinanceLeaseLiabilityCurrent"]
+# Lines the credit rating (credit_spread.py) reads that the valuation builders do not.
+CREDIT_EXTRA = ["Liabilities", "RetainedEarningsAccumulatedDeficit"]
 # One-off charges Yahoo leaves out of operating income. The combined line is used when a company reports it,
 # otherwise the separate impairment lines are added.
 SPECIAL_COMBINED = "RestructuringCostsAndAssetImpairmentCharges"
@@ -432,7 +434,7 @@ def fetch(ticker, ua=None, since="2020-12-31"):
     wanted.update(
         DEBT_CURRENT + DEBT_OTHER + DEBT_LONG + LEASES + ["Goodwill", "IntangibleAssetsNetExcludingGoodwill"]
     )
-    wanted.update([SPECIAL_COMBINED, *SPECIAL_PARTS])
+    wanted.update([SPECIAL_COMBINED, *SPECIAL_PARTS, *CREDIT_EXTRA])
     out = {"cik": j.get("cik"), "name": j.get("entityName"), "facts": {}}
     for tag in wanted & set(g):
         for unit, arr in g[tag]["units"].items():

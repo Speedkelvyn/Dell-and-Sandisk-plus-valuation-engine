@@ -41,10 +41,10 @@ def metrics(at):
     return {m.label: m.value for m in at.metric}
 
 
-def test_loads_with_five_tabs(app):
+def test_loads_with_six_tabs(app):
     assert not app.exception
-    assert [t.label for t in app.tabs][:5] == [
-        "Watchlist", "Portfolio", "Value one stock", "Macro and market", "How it works",
+    assert [t.label for t in app.tabs][:6] == [
+        "Watchlist", "Portfolio", "Value one stock", "Credit rating", "Macro and market", "How it works",
     ]  # fmt: skip
 
 
@@ -118,3 +118,26 @@ def _holdings():
     import pandas as pd
 
     return pd.DataFrame({"Ticker": ["DELL", "SNDK"], "Shares": [10, 2], "Cost per share": [300.0, 900.0]})
+
+
+def test_credit_tab_rates_a_company_from_its_filings(app, monkeypatch):
+    """The Credit rating tab shows the grade, the spread table and the caveats for a ticker, with the SEC feed faked."""
+    import credit_spread
+
+    sys.path.insert(0, str(ROOT / "engine" / "tests"))
+    from test_credit_spread import ll_facts
+
+    monkeypatch.setattr(
+        service,
+        "credit_rating",
+        lambda t, **kw: {
+            **credit_spread.rate_facts(ll_facts(), since="2020-12-31"),
+            "ticker": t.strip().upper(),
+            "note": None,
+        },
+    )
+    app.text_input(key="credit_ticker").set_value("llfl").run()
+    app.button(key="credit_go").click().run()
+    assert not app.exception
+    assert any("LLFL" in s.value for s in app.subheader)
+    assert any(m.label.startswith("Grade") for m in app.metric)

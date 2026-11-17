@@ -154,8 +154,8 @@ st.caption(
     "A discounted-cash-flow, Monte Carlo and comparables valuation for any listed company, with every input traced to a source."
 )
 
-tab_watch, tab_port, tab_one, tab_macro, tab_how = st.tabs(
-    ["Watchlist", "Portfolio", "Value one stock", "Macro and market", "How it works"]
+tab_watch, tab_port, tab_one, tab_credit, tab_macro, tab_how = st.tabs(
+    ["Watchlist", "Portfolio", "Value one stock", "Credit rating", "Macro and market", "How it works"]
 )
 
 vals: dict[str, S.Valuation] = ss("vals", {})
@@ -1093,6 +1093,102 @@ with tab_one:
         show_valuation(val, key="one", model_val=model_val)
     else:
         st.info("Pick a source above and open a company.")
+
+
+# ------------------------------------------------------------- credit rating
+GRADE_WORDS = {
+    1: "Strong", 2: "Strong", 3: "Good", 4: "Acceptable", 5: "Acceptable with care",
+    6: "Watch", 7: "Weak", 8: "Weak", 9: "Very weak",
+}  # fmt: skip
+
+
+def credit_years_table(res: dict) -> pd.DataFrame:
+    rows = []
+    for y in res["years"]:
+        rows.append(
+            {
+                "Year end": y["date"], "Grade": y["grade"], "Score": y["score"], "Altman Z": y["altman_z"],
+                "Altman Z\u2033": y["altman_z2"], "Distance to default": y["dd"], "DSCR": y["dscr"],
+                "Debt / assets": y["debt_assets"], "EBITDA / interest": y["coverage"],
+                "Debt / EBITDA": y["debt_ebitda"], "Current ratio": y["current_ratio"], "Return on assets": y["roa"],
+                "Sales ($M)": y["sale"], "EBITDA ($M)": y["oibdp"],
+            }
+        )  # fmt: skip
+    return pd.DataFrame(rows)
+
+
+with tab_credit:
+    st.markdown(
+        "Rate a company from its SEC filings: ratios, the Altman Z-score, a 1 to 9 grade, and debt service coverage."
+    )
+    a, c = st.columns([3, 1])
+    cr_in = a.text_input("Ticker", placeholder="DELL", key="credit_ticker")
+    c.write("")
+    if c.button("Rate it", type="primary", disabled=not cr_in.strip(), key="credit_go"):
+        try:
+            with st.spinner(f"Reading the filings for {cr_in.strip().upper()}…"):
+                st.session_state["credit"] = S.credit_rating(cr_in, refresh=refresh)
+        except S.DataError as e:
+            st.session_state.pop("credit", None)
+            st.error(str(e))
+    res = st.session_state.get("credit")
+    if not res:
+        st.info(
+            "Type a ticker and press **Rate it**. The SEC asks programs to identify themselves: set the environment "
+            "variable SEC_USER_AGENT to your name and email before starting the app."
+        )
+    else:
+        last = res["years"][-1]
+        st.subheader(
+            f"{res['name']} ({res['ticker']}): grade {last['grade']}, {GRADE_WORDS.get(last['grade'], '')}"
+        )
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Grade (1 strong, 9 weak)", f"{last['grade']}")
+        m2.metric("Score (0 to 100)", f"{last['score']:.0f}")
+        m3.metric(
+            "Altman Z\u2033", "n/a" if last["altman_z2"] != last["altman_z2"] else f"{last['altman_z2']:.2f}"
+        )
+        m4.metric("DSCR", "n/a" if last["dscr"] != last["dscr"] else f"{last['dscr']:.2f}x")
+        st.caption(
+            f"Year ended {last['date']}. Basis: {res['mode']}. "
+            + (
+                "The grade uses the stock's volatility and return too. "
+                if res["mode"] != "statements only"
+                else ""
+            )
+            + (res["note"] or "")
+        )
+        df = credit_years_table(res)
+        cfg = {
+            "Score": st.column_config.NumberColumn(format="%.0f"),
+            "Altman Z": st.column_config.NumberColumn(format="%.2f"),
+            "Altman Z\u2033": st.column_config.NumberColumn(format="%.2f"),
+            "Distance to default": st.column_config.NumberColumn(format="%.1f"),
+            "DSCR": st.column_config.NumberColumn(format="%.2fx", help="(EBITDA less capex) / (interest + debt due in a year)"),
+            "Debt / assets": st.column_config.NumberColumn(format="percent"),
+            "EBITDA / interest": st.column_config.NumberColumn(format="%.1fx"),
+            "Debt / EBITDA": st.column_config.NumberColumn(format="%.1fx"),
+            "Current ratio": st.column_config.NumberColumn(format="%.2f"),
+            "Return on assets": st.column_config.NumberColumn(format="percent"),
+            "Sales ($M)": st.column_config.NumberColumn(format="%.0f"),
+            "EBITDA ($M)": st.column_config.NumberColumn(format="%.0f"),
+        }  # fmt: skip
+        st.dataframe(df, hide_index=True, width="stretch", column_config=cfg)
+        st.download_button(
+            "Download the spread (CSV)",
+            df.to_csv(index=False),
+            f"{res['ticker']}_credit_spread.csv",
+            "text/csv",
+        )
+        with st.expander("How reliable is the grade?"):
+            st.markdown(
+                "Back-tested on 72,000 company-years of non-financial companies (2000 to 2024, 678 bankruptcies marked by Compustat's "
+                "Q ticker). Within 12 months, among stocks priced $3 or more, grades 7 to 9 flagged 9% of companies and caught "
+                "59% of the failures; the Altman Z-score flagged 25% to catch 56%. Default rates rise at every grade, from about 0.1% "
+                "at grades 1 to 3 to 4.3% at grade 9. Without a stock price the grade uses the statements only and scores a little lower. "
+                "The grade does not catch failures the statements hide, and most flagged companies do not fail. "
+                "Full results: backtest/CREDIT_FINDINGS.md."
+            )  # fmt: skip
 
 
 # ---------------------------------------------------------- macro and market
